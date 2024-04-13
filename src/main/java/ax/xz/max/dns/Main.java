@@ -1,3 +1,5 @@
+package ax.xz.max.dns;
+
 import java.util.concurrent.StructuredTaskScope;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
