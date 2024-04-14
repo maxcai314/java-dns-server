@@ -1,6 +1,8 @@
 package ax.xz.max.dns.resource;
 
-public record ARecord(String domain, byte[] ip) {
+import java.util.Arrays;
+
+public record ARecord(String domain, byte[] ip) implements ResourceRecord {
 	public ARecord {
 		ip = ip.clone();
 	}
@@ -8,5 +10,13 @@ public record ARecord(String domain, byte[] ip) {
 	@Override
 	public byte[] ip() {
 		return ip.clone();
+	}
+
+	@Override
+	public String toString() {
+		return "ARecord{" +
+				"domain='" + domain + '\'' +
+				", ip=" + Arrays.toString(ip) +
+				'}';
 	}
 }

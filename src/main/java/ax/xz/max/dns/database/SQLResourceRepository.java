@@ -5,6 +5,7 @@ import org.sqlite.SQLiteDataSource;
 
 import java.sql.*;
 import java.util.Arrays;
+import java.util.Optional;
 
 public class SQLResourceRepository implements ResourceRepository {
 	private final SQLiteDataSource dataSource;
@@ -39,7 +40,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public void insert(ARecord aRecord) throws ResourceAccessException {
+	public void insertARecord(ARecord aRecord) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement("INSERT INTO A_records VALUES (?, ?)");
@@ -64,6 +65,24 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.executeUpdate();
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to delete record", e);
+		}
+	}
+
+	@Override
+	public Optional<ARecord> getARecord(String hostname) throws ResourceAccessException {
+		try (
+				Connection connection = dataSource.getConnection();
+				PreparedStatement statement = connection.prepareStatement("SELECT * FROM A_records WHERE hostname = ?");
+		) {
+			statement.setQueryTimeout(30);
+			statement.setString(1, hostname);
+			ResultSet results = statement.executeQuery();
+			if (results.next())
+				return Optional.of(new ARecord(results.getString("hostname"), results.getBytes("address")));
+			else
+				return Optional.empty();
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to get record", e);
 		}
 	}
 
