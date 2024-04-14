@@ -1,14 +1,17 @@
 package ax.xz.max.dns;
 
+import org.sqlite.SQLiteDataSource;
+
 import java.sql.*;
 import java.util.Arrays;
 
 public class Database {
-	public static void main(String[] args) throws ClassNotFoundException {
-		Class.forName("org.sqlite.JDBC");
+	public static void main(String[] args) {
+		SQLiteDataSource dataSource = new SQLiteDataSource();
+		dataSource.setUrl("jdbc:sqlite:records.db");
 		try (
-				Connection connection = DriverManager.getConnection("jdbc:sqlite:records.db");
-				Statement statement = connection.createStatement()
+				Connection connection = dataSource.getConnection();
+				Statement statement = connection.createStatement();
 		) {
 			statement.setQueryTimeout(30);
 			statement.executeUpdate("DROP TABLE IF EXISTS A_records");
