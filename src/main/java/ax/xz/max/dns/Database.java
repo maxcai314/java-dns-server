@@ -6,7 +6,7 @@ import ax.xz.max.dns.resource.ARecord;
 import java.sql.*;
 
 public class Database {
-	public static void main(String[] args) throws SQLException {
+	public static void main(String[] args) {
 		SQLResourceRepository controller = new SQLResourceRepository();
 		controller.clear();
 		controller.insertARecord(new ARecord("example.com", new byte[]{127, 0, 0, 1}));

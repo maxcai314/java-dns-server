@@ -9,19 +9,21 @@ import java.util.Optional;
 
 public class SQLResourceRepository implements ResourceRepository {
 	private final SQLiteDataSource dataSource;
-	public SQLResourceRepository() throws SQLException {
+	public SQLResourceRepository() throws ResourceAccessException {
 		dataSource = new SQLiteDataSource();
 		dataSource.setUrl("jdbc:sqlite:records.db");
 		initialize();
 	}
 
-	private void initialize() throws SQLException {
+	private void initialize() throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				Statement statement = connection.createStatement();
 		) {
 			statement.setQueryTimeout(30);
 			statement.executeUpdate("CREATE TABLE IF NOT EXISTS A_records (hostname TEXT PRIMARY KEY, address Binary(4))");
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to initialize database", e);
 		}
 	}
 
