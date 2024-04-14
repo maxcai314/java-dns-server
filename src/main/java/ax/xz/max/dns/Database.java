@@ -1,31 +1,16 @@
 package ax.xz.max.dns;
 
-import org.sqlite.SQLiteDataSource;
-
+import ax.xz.max.dns.database.ResourceController;
 import java.sql.*;
-import java.util.Arrays;
 
 public class Database {
-	public static void main(String[] args) {
-		SQLiteDataSource dataSource = new SQLiteDataSource();
-		dataSource.setUrl("jdbc:sqlite:records.db");
-		try (
-				Connection connection = dataSource.getConnection();
-				Statement statement = connection.createStatement();
-		) {
-			statement.setQueryTimeout(30);
-			statement.executeUpdate("DROP TABLE IF EXISTS A_records");
-			statement.executeUpdate("CREATE TABLE IF NOT EXISTS A_records (hostname TEXT PRIMARY KEY, address Binary(4))");
-			statement.executeUpdate("INSERT INTO A_records VALUES ('example.com', X'7f000001')");
-			statement.executeUpdate("INSERT INTO A_records VALUES ('example2.com', X'7f000001')");
-			ResultSet rs = statement.executeQuery("SELECT * FROM A_records");
-
-			while (rs.next()) {
-				System.out.println("hostname = " + rs.getString("hostname"));
-				System.out.println("address = " + Arrays.toString(rs.getBytes("address")));
-			}
-		} catch (SQLException e) {
-			throw new RuntimeException(e);
-		}
+	public static void main(String[] args) throws SQLException {
+		ResourceController controller = new ResourceController();
+		controller.reset();
+		controller.insert("example.com", new byte[]{127, 0, 0, 1});
+		controller.insert("example.net", new byte[]{127, 0, 0, 2});
+		controller.insert("example.org", new byte[]{127, 0, 0, 3});
+		controller.delete("example.net");
+		controller.printAll();
 	}
 }
