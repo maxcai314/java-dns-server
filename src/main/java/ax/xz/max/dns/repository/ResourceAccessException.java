@@ -1,4 +1,4 @@
-package ax.xz.max.dns.database;
+package ax.xz.max.dns.repository;
 
 public class ResourceAccessException extends RuntimeException {
 	public ResourceAccessException(String message) {

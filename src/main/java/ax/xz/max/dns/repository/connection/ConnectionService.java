@@ -1,4 +1,4 @@
-package ax.xz.max.dns.database.connection;
+package ax.xz.max.dns.repository.connection;
 
 import java.sql.Connection;
 import java.sql.SQLException;

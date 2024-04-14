@@ -1,9 +1,7 @@
 package ax.xz.max.dns;
 
-import ax.xz.max.dns.database.SQLResourceRepository;
+import ax.xz.max.dns.repository.SQLResourceRepository;
 import ax.xz.max.dns.resource.ARecord;
-
-import java.sql.*;
 
 public class Database {
 	public static void main(String[] args) {

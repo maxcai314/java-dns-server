@@ -1,4 +1,4 @@
-package ax.xz.max.dns.database;
+package ax.xz.max.dns.repository;
 
 import ax.xz.max.dns.resource.ARecord;
 import org.sqlite.SQLiteDataSource;
