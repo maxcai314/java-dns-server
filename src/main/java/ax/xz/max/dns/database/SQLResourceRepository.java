@@ -1,13 +1,14 @@
 package ax.xz.max.dns.database;
 
+import ax.xz.max.dns.resource.ARecord;
 import org.sqlite.SQLiteDataSource;
 
 import java.sql.*;
 import java.util.Arrays;
 
-public class ResourceController {
+public class SQLResourceRepository implements ResourceRepository {
 	private final SQLiteDataSource dataSource;
-	public ResourceController() throws SQLException {
+	public SQLResourceRepository() throws SQLException {
 		dataSource = new SQLiteDataSource();
 		dataSource.setUrl("jdbc:sqlite:records.db");
 		initialize();
@@ -23,7 +24,8 @@ public class ResourceController {
 		}
 	}
 
-	public void reset() throws SQLException {
+	@Override
+	public void clear() throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				Statement statement = connection.createStatement();
@@ -31,22 +33,28 @@ public class ResourceController {
 			statement.setQueryTimeout(30);
 			statement.executeUpdate("DROP TABLE IF EXISTS A_records");
 			statement.executeUpdate("CREATE TABLE A_records (hostname TEXT PRIMARY KEY, address Binary(4))");
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to clear database", e);
 		}
 	}
 
-	public void insert(String hostname, byte[] address) throws SQLException {
+	@Override
+	public void insert(ARecord aRecord) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement("INSERT INTO A_records VALUES (?, ?)");
 		) {
 			statement.setQueryTimeout(30);
-			statement.setString(1, hostname);
-			statement.setBytes(2, address);
+			statement.setString(1, aRecord.domain());
+			statement.setBytes(2, aRecord.ip());
 			statement.executeUpdate();
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to insert record", e);
 		}
 	}
 
-	public void delete(String hostname) throws SQLException {
+	@Override
+	public void deleteARecord(String hostname) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM A_records WHERE hostname = ?");
@@ -54,10 +62,12 @@ public class ResourceController {
 			statement.setQueryTimeout(30);
 			statement.setString(1, hostname);
 			statement.executeUpdate();
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to delete record", e);
 		}
 	}
 
-	public void printAll() throws SQLException {
+	public void printAll() throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				Statement statement = connection.createStatement();
@@ -67,6 +77,8 @@ public class ResourceController {
 			while (results.next()) {
 				System.out.println("Hostname: " + results.getString("hostname") + " Address: " + Arrays.toString(results.getBytes("address")));
 			}
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to print records", e);
 		}
 	}
 }
