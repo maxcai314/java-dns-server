@@ -3,7 +3,7 @@ package ax.xz.max.dns.resource;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 
-public sealed interface ResourceRecord permits ARecord, NSRecord {
+public sealed interface ResourceRecord permits ARecord, NSRecord, CNameRecord {
 	DomainName name();
 
 	int timeToLive();

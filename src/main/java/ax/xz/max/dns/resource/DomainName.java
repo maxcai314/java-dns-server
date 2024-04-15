@@ -9,6 +9,7 @@ import static java.nio.ByteOrder.BIG_ENDIAN;
 
 public record DomainName(String name) {
 	public DomainName {
+		if (name.equals("@")) name = "";
 		name = name.toLowerCase();
 		if (name.endsWith(".")) name = name.substring(0, name.length() - 1);
 		if (name.startsWith(".")) name = name.substring(1);

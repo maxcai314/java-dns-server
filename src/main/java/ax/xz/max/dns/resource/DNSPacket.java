@@ -2,7 +2,6 @@ package ax.xz.max.dns.resource;
 
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
-import java.nio.charset.StandardCharsets;
 
 import static java.lang.foreign.ValueLayout.*;
 import static java.nio.ByteOrder.BIG_ENDIAN;
@@ -39,6 +38,7 @@ public record DNSPacket(MemorySegment data) {
 		return switch(resource) {
 			case ARecord __ -> 1;
 			case NSRecord __ -> 2;
+			case CNameRecord __ -> 5;
 		};
 	}
 }
