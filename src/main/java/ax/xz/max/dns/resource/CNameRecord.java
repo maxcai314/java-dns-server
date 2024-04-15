@@ -10,4 +10,8 @@ public record CNameRecord(DomainName name, int timeToLive, DomainName alias) imp
 		alias.apply(segment);
 		return segment;
 	}
+
+	public static CNameRecord fromData(DomainName name, int timeToLive, byte[] data) {
+		return new CNameRecord(name, timeToLive, DomainName.fromData(data));
+	}
 }

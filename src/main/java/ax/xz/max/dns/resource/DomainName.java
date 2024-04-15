@@ -9,13 +9,13 @@ import static java.nio.ByteOrder.BIG_ENDIAN;
 
 public record DomainName(String name) {
 	public DomainName {
-		if (name.equals("@")) name = "";
 		name = name.toLowerCase();
-		if (name.endsWith(".")) name = name.substring(0, name.length() - 1);
+		if (name.equals("@")) name = "";
+		if (!name.endsWith(".")) name += ".";
 		if (name.startsWith(".")) name = name.substring(1);
 		if (name.startsWith("-")) throw new IllegalArgumentException("Name cannot start with hyphen: " + name);
 		if (name.endsWith("-")) throw new IllegalArgumentException("Name cannot end with hyphen: " + name);
-		for (String label : labels()) {
+		for (String label : name.split("\\.")) {
 			if (label.length() > 63) throw new IllegalArgumentException("Label too long: " + label);
 			if (!label.matches("[a-z0-9-]+")) throw new IllegalArgumentException("Invalid label: " + label);
 		}
@@ -29,7 +29,7 @@ public record DomainName(String name) {
 	}
 
 	public int byteSize() {
-		return name.length() + 1; // null-terminated
+		return name.length() + 1; // null-terminated; +2 if name doesn't end with .
 	}
 
 	public void apply(MemorySegment slice) {
@@ -41,5 +41,27 @@ public record DomainName(String name) {
 			slice.setString(offset + 1, label, StandardCharsets.US_ASCII);
 			offset += 1 + label.length();
 		}
+
+		slice.set(NETWORK_BYTE, offset, (byte) 0); // technically unnecessary; null-terminated
+	}
+
+	public static DomainName fromData(byte[] data) {
+		StringBuilder builder = new StringBuilder();
+		int remaining = data[0];
+		int index = 1;
+		while (true) {
+			builder.append((char) data[index]);
+			index++;
+			remaining--;
+			if (remaining == 0) {
+				if (data[index] == 0) break;
+				builder.append('.');
+				remaining = data[index];
+				index++;
+			}
+
+			if (index >= data.length) throw new IllegalArgumentException("Failed to parse data");
+		}
+		return new DomainName(builder.toString());
 	}
 }
