@@ -128,6 +128,8 @@ public class SQLResourceRepository implements ResourceRepository {
 				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE name = ? AND class = ?");
 		) {
 			String className = clazz.getSimpleName();
+			if (className.equals("RecordData"))
+				throw new IllegalArgumentException("Invalid class name: " + className);
 
 			statement.setString(1, name.name());
 			statement.setString(2, className);
