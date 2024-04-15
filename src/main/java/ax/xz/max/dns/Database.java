@@ -27,7 +27,7 @@ public class Database {
 		System.out.println("printing all:");
 		controller.getAll().forEach(System.out::println);
 
-		System.out.println("queries:");
+		System.out.println("\nprinting all by name:");
 		System.out.println(controller.getAllByName(new DomainName("example.com")));
 		System.out.println(controller.getAllByName(new DomainName("example.net"))); // empty
 	}

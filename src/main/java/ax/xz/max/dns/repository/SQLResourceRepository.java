@@ -95,7 +95,33 @@ public class SQLResourceRepository implements ResourceRepository {
 
 	@Override
 	public Collection<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException {
-		return null;
+		try (
+				Connection connection = dataSource.getConnection();
+				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE name = ?");
+		) {
+			statement.setString(1, name.name());
+			ResultSet resultSet = statement.executeQuery();
+
+			Collection<ResourceRecord> records = new LinkedList<>();
+
+			while (resultSet.next()) {
+				if (!resultSet.getString("name").equals(name.name()))
+					throw new ResourceAccessException("Name mismatch from database query");
+
+				int timeToLive = resultSet.getInt("time_to_live");
+				byte[] data = resultSet.getBytes("data");
+				records.add(switch (resultSet.getString("class")) {
+					case "ARecord" -> ARecord.fromData(name, timeToLive, data);
+					case "NSRecord" -> NSRecord.fromData(name, timeToLive, data);
+					case "CNameRecord" -> CNameRecord.fromData(name, timeToLive, data);
+					default -> throw new ResourceAccessException("Unknown record type");
+				});
+			}
+
+			return records;
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to get all records", e);
+		}
 	}
 
 	@Override
