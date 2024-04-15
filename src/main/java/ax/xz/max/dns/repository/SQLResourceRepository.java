@@ -5,7 +5,6 @@ import org.sqlite.SQLiteDataSource;
 
 import java.lang.foreign.SegmentAllocator;
 import java.sql.*;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 
@@ -62,8 +61,121 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public void delete(ResourceRecord record) throws ResourceAccessException {
+	public Collection<ResourceRecord> delete(ResourceRecord record) throws ResourceAccessException {
+		try (
+				Connection connection = dataSource.getConnection();
+				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND class = ? AND time_to_live = ? AND data = ? RETURNING *");
+		) {
+			statement.setString(1, record.name().name());
+			statement.setString(2, record.getClass().getSimpleName());
+			statement.setInt(3, record.timeToLive());
+			statement.setBytes(4, record.recordData(allocator).asByteBuffer().array());
+			ResultSet resultSet = statement.executeQuery();
 
+			Collection<ResourceRecord> records = new LinkedList<>();
+
+			while (resultSet.next()) {
+				records.add(fromResultSet(resultSet));
+			}
+
+			return records;
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to delete record", e);
+		}
+	}
+
+	@Override
+	public Collection<ResourceRecord> deleteAllByName(ResourceRecord record) throws ResourceAccessException {
+		try (
+				Connection connection = dataSource.getConnection();
+				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? RETURNING *");
+		) {
+			statement.setString(1, record.name().name());
+			ResultSet resultSet = statement.executeQuery();
+
+			Collection<ResourceRecord> records = new LinkedList<>();
+
+			while (resultSet.next()) {
+				records.add(fromResultSet(resultSet));
+			}
+
+			return records;
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to delete record", e);
+		}
+	}
+
+	@Override
+	public <T extends ResourceRecord> Collection<T> deleteAllByNameAndType(DomainName name, Class<T> clazz) throws ResourceAccessException {
+		try (
+				Connection connection = dataSource.getConnection();
+				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND class = ? RETURNING *");
+		) {
+			if (clazz.getSimpleName().equals("RecordData"))
+				throw new IllegalArgumentException("Invalid class name: " + clazz.getSimpleName());
+
+			statement.setString(1, name.name());
+			statement.setString(2, clazz.getSimpleName());
+			ResultSet resultSet = statement.executeQuery();
+
+			Collection<T> records = new LinkedList<>();
+
+			while (resultSet.next()) {
+				records.add((T) fromResultSet(resultSet));
+			}
+
+			return records;
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to delete record", e);
+		}
+	}
+
+	@Override
+	public <T extends ResourceRecord> Collection<T> getAllByType(Class<T> clazz) throws ResourceAccessException {
+		try (
+				Connection connection = dataSource.getConnection();
+				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE class = ?");
+		) {
+			if (clazz.getSimpleName().equals("RecordData"))
+				throw new IllegalArgumentException("Invalid class name: " + clazz.getSimpleName());
+
+			statement.setString(1, clazz.getSimpleName());
+			ResultSet resultSet = statement.executeQuery();
+
+			Collection<T> records = new LinkedList<>();
+
+			while (resultSet.next()) {
+				records.add((T) fromResultSet(resultSet));
+			}
+
+			return records;
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to get all records", e);
+		}
+	}
+
+	@Override
+	public <T extends ResourceRecord> Collection<T> deleteAllByType(Class<T> clazz) throws ResourceAccessException {
+		try (
+				Connection connection = dataSource.getConnection();
+				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE class = ? RETURNING *");
+		) {
+			if (clazz.getSimpleName().equals("RecordData"))
+				throw new IllegalArgumentException("Invalid class name: " + clazz.getSimpleName());
+
+			statement.setString(1, clazz.getSimpleName());
+			ResultSet resultSet = statement.executeQuery();
+
+			Collection<T> records = new LinkedList<>();
+
+			while (resultSet.next()) {
+				records.add((T) fromResultSet(resultSet));
+			}
+
+			return records;
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to delete record", e);
+		}
 	}
 
 	private ResourceRecord fromResultSet(ResultSet resultSet) throws SQLException {
@@ -149,23 +261,6 @@ public class SQLResourceRepository implements ResourceRepository {
 			return records;
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to get all records", e);
-		}
-	}
-
-	public void printAll() throws ResourceAccessException {
-		try (
-				Connection connection = dataSource.getConnection();
-				Statement statement = connection.createStatement();
-				ResultSet resultSet = statement.executeQuery("SELECT * FROM records");
-		) {
-			while (resultSet.next()) {
-				System.out.println(resultSet.getString("name")
-						+ " " + resultSet.getString("class")
-						+ " " + resultSet.getInt("time_to_live")
-						+ " " + Arrays.toString(resultSet.getBytes("data")));
-			}
-		} catch (SQLException e) {
-			throw new ResourceAccessException("Failed to print all records", e);
 		}
 	}
 }

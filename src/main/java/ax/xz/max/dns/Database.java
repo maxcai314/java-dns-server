@@ -28,9 +28,12 @@ public class Database {
 		controller.insert(org);
 		controller.insert(org2);
 
-		controller.delete(net); // not implemented!
+		var deleted = controller.delete(net);
+		System.out.println("deleted: " + deleted.size());
+		for (var record : deleted)
+			System.out.println(record);
 
-		System.out.println("printing all:");
+		System.out.println("\nprinting all:");
 		for (var record : controller.getAll())
 			System.out.println(record);
 
@@ -41,6 +44,18 @@ public class Database {
 
 		System.out.println("\nprinting all by name and type:");
 		for (var record : controller.getAllByNameAndType(new DomainName("example.org"), ARecord.class))
+			System.out.println(record);
+
+		System.out.println("\nprinting all by type:");
+		for (var record : controller.getAllByType(ARecord.class))
+			System.out.println(record);
+
+		System.out.println("\ndeleting all by type:");
+		for (var record : controller.deleteAllByType(ARecord.class))
+			System.out.println(record);
+
+		System.out.println("\nprinting all:");
+		for (var record : controller.getAll())
 			System.out.println(record);
 	}
 }
