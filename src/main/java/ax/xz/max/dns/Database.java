@@ -27,13 +27,20 @@ public class Database {
 		controller.insert(wwwOrg);
 		controller.insert(org);
 		controller.insert(org2);
+
 		controller.delete(net); // not implemented!
 
 		System.out.println("printing all:");
-		controller.getAll().forEach(System.out::println);
+		for (var record : controller.getAll())
+			System.out.println(record);
 
 		System.out.println("\nprinting all by name:");
 		System.out.println(controller.getAllByName(new DomainName("example.com")));
-		System.out.println(controller.getAllByName(new DomainName("example.org"))); // empty
+		System.out.println(controller.getAllByName(new DomainName("example.org")));
+		System.out.println(controller.getAllByName(new DomainName("www.example.org"))); // empty
+
+		System.out.println("\nprinting all by name and type:");
+		for (var record : controller.getAllByNameAndType(new DomainName("example.org"), ARecord.class))
+			System.out.println(record);
 	}
 }

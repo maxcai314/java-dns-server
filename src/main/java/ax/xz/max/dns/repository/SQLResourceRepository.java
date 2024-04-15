@@ -66,6 +66,18 @@ public class SQLResourceRepository implements ResourceRepository {
 
 	}
 
+	private ResourceRecord fromResultSet(ResultSet resultSet) throws SQLException {
+		var name = new DomainName(resultSet.getString("name"));
+		int timeToLive = resultSet.getInt("time_to_live");
+		byte[] data = resultSet.getBytes("data");
+		return switch (resultSet.getString("class")) {
+			case "ARecord" -> ARecord.fromData(name, timeToLive, data);
+			case "NSRecord" -> NSRecord.fromData(name, timeToLive, data);
+			case "CNameRecord" -> CNameRecord.fromData(name, timeToLive, data);
+			default -> throw new SQLException("Unknown record type");
+		};
+	}
+
 	@Override
 	public Collection<ResourceRecord> getAll() throws ResourceAccessException {
 		try (
@@ -76,15 +88,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			Collection<ResourceRecord> records = new LinkedList<>();
 
 			while (resultSet.next()) {
-				var name = new DomainName(resultSet.getString("name"));
-				int timeToLive = resultSet.getInt("time_to_live");
-				byte[] data = resultSet.getBytes("data");
-				records.add(switch (resultSet.getString("class")) {
-					case "ARecord" -> ARecord.fromData(name, timeToLive, data);
-					case "NSRecord" -> NSRecord.fromData(name, timeToLive, data);
-					case "CNameRecord" -> CNameRecord.fromData(name, timeToLive, data);
-					default -> throw new ResourceAccessException("Unknown record type");
-				});
+				records.add(fromResultSet(resultSet));
 			}
 
 			return records;
@@ -108,14 +112,7 @@ public class SQLResourceRepository implements ResourceRepository {
 				if (!resultSet.getString("name").equals(name.name()))
 					throw new ResourceAccessException("Name mismatch from database query");
 
-				int timeToLive = resultSet.getInt("time_to_live");
-				byte[] data = resultSet.getBytes("data");
-				records.add(switch (resultSet.getString("class")) {
-					case "ARecord" -> ARecord.fromData(name, timeToLive, data);
-					case "NSRecord" -> NSRecord.fromData(name, timeToLive, data);
-					case "CNameRecord" -> CNameRecord.fromData(name, timeToLive, data);
-					default -> throw new ResourceAccessException("Unknown record type");
-				});
+				records.add(fromResultSet(resultSet));
 			}
 
 			return records;
@@ -126,7 +123,31 @@ public class SQLResourceRepository implements ResourceRepository {
 
 	@Override
 	public <T extends ResourceRecord> Collection<T> getAllByNameAndType(DomainName name, Class<T> clazz) throws ResourceAccessException {
-		return null;
+		try (
+				Connection connection = dataSource.getConnection();
+				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE name = ? AND class = ?");
+		) {
+			String className = clazz.getSimpleName();
+
+			statement.setString(1, name.name());
+			statement.setString(2, className);
+			ResultSet resultSet = statement.executeQuery();
+
+			Collection<T> records = new LinkedList<>();
+
+			while (resultSet.next()) {
+				if (!resultSet.getString("name").equals(name.name()))
+					throw new ResourceAccessException("Name mismatch from database query");
+				if (!resultSet.getString("class").equals(className))
+					throw new ResourceAccessException("Class mismatch from database query");
+
+				records.add((T) fromResultSet(resultSet));
+			}
+
+			return records;
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to get all records", e);
+		}
 	}
 
 	public void printAll() throws ResourceAccessException {

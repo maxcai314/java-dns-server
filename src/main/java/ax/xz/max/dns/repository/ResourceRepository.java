@@ -10,7 +10,6 @@ import java.util.Optional;
 public interface ResourceRepository {
 	void clear() throws ResourceAccessException;
 
-	// todo: shouldn't exist?
 	void insert(ResourceRecord record) throws ResourceAccessException;
 	void delete(ResourceRecord record) throws ResourceAccessException;
 	Collection<ResourceRecord> getAll() throws ResourceAccessException;
