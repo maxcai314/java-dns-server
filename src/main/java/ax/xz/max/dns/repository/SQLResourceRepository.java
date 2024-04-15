@@ -1,5 +1,6 @@
 package ax.xz.max.dns.repository;
 
+import ax.xz.max.dns.resource.DomainName;
 import ax.xz.max.dns.resource.ResourceRecord;
 import org.sqlite.SQLiteDataSource;
 
@@ -53,7 +54,12 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public <T extends ResourceRecord> Collection<T> getAllByNameAndType(String name, Class<T> clazz) throws ResourceAccessException {
+	public Collection<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException {
+		return null;
+	}
+
+	@Override
+	public <T extends ResourceRecord> Collection<T> getAllByNameAndType(DomainName name, Class<T> clazz) throws ResourceAccessException {
 		return null;
 	}
 }
