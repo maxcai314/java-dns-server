@@ -1,13 +1,12 @@
 package ax.xz.max.dns.resource;
 
-public sealed interface ResourceRecord permits ARecord {
-	int A_TYPE_ID = 1;
-	int AAAA_TYPE_ID = 28;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
 
-	 default int typeID() {
-		return switch (this) {
-			case ARecord __ -> A_TYPE_ID;
-			// etc.
-		};
-	}
+public sealed interface ResourceRecord permits ARecord, NSRecord {
+	DomainName name();
+
+	int timeToLive();
+
+	MemorySegment recordData(SegmentAllocator allocator);
 }

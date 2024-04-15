@@ -2,11 +2,12 @@ package ax.xz.max.dns.resource;
 
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
-import java.net.Inet4Address;
 
-public record ARecord(DomainName name, int timeToLive, Inet4Address address) implements ResourceRecord {
+public record NSRecord(DomainName name, int timeToLive) implements ResourceRecord {
 	@Override
 	public MemorySegment recordData(SegmentAllocator allocator) {
-		return MemorySegment.ofArray(address.getAddress());
+		var segment = allocator.allocate(name.byteSize());
+		name.apply(segment);
+		return segment;
 	}
 }
