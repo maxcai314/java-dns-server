@@ -21,8 +21,8 @@ public class SQLResourceRepository implements ResourceRepository {
 				Connection connection = dataSource.getConnection();
 				Statement statement = connection.createStatement();
 		) {
-			statement.setQueryTimeout(30); // todo: bad: "class" should actually be "type"
-			statement.executeUpdate("CREATE TABLE IF NOT EXISTS records ( id Integer PRIMARY KEY, name Varchar(255) NOT NULL, class TEXT NOT NULL, time_to_live integer NOT NULL, data Varbinary(65535) NOT NULL )");
+			statement.setQueryTimeout(30);
+			statement.executeUpdate("CREATE TABLE IF NOT EXISTS records ( id Integer PRIMARY KEY, name Varchar(255) NOT NULL, type TEXT NOT NULL, time_to_live integer NOT NULL, data Varbinary(65535) NOT NULL )");
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to initialize database", e);
 		}
@@ -36,7 +36,7 @@ public class SQLResourceRepository implements ResourceRepository {
 		) {
 			statement.setQueryTimeout(30);
 			statement.executeUpdate("DROP TABLE IF EXISTS records");
-			statement.executeUpdate("CREATE TABLE IF NOT EXISTS records ( id Integer PRIMARY KEY, name Varchar(255) NOT NULL, class TEXT NOT NULL, time_to_live integer NOT NULL, data Varbinary(65535) NOT NULL )");
+			statement.executeUpdate("CREATE TABLE IF NOT EXISTS records ( id Integer PRIMARY KEY, name Varchar(255) NOT NULL, type TEXT NOT NULL, time_to_live integer NOT NULL, data Varbinary(65535) NOT NULL )");
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to clear database", e);
 		}
@@ -46,7 +46,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	public void insert(ResourceRecord record) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("INSERT INTO records (name, class, time_to_live, data) VALUES (?, ?, ?, ?)");
+				PreparedStatement statement = connection.prepareStatement("INSERT INTO records (name, type, time_to_live, data) VALUES (?, ?, ?, ?)");
 		) {
 			statement.setString(1, record.name().name());
 			statement.setString(2, record.getClass().getSimpleName());
@@ -62,7 +62,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	public List<ResourceRecord> delete(ResourceRecord record) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND class = ? AND time_to_live = ? AND data = ? RETURNING *");
+				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND type = ? AND time_to_live = ? AND data = ? RETURNING *");
 		) {
 			statement.setString(1, record.name().name());
 			statement.setString(2, record.getClass().getSimpleName());
@@ -104,16 +104,16 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public <T extends ResourceRecord> List<T> deleteAllByNameAndType(DomainName name, Class<T> clazz) throws ResourceAccessException {
+	public <T extends ResourceRecord> List<T> deleteAllByNameAndType(DomainName name, Class<T> type) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND class = ? RETURNING *");
+				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND type = ? RETURNING *");
 		) {
-			if (clazz.getSimpleName().equals("RecordData"))
-				throw new IllegalArgumentException("Invalid class name: " + clazz.getSimpleName());
+			if (type.getSimpleName().equals("RecordData"))
+				throw new IllegalArgumentException("Invalid type name: " + type.getSimpleName());
 
 			statement.setString(1, name.name());
-			statement.setString(2, clazz.getSimpleName());
+			statement.setString(2, type.getSimpleName());
 			ResultSet resultSet = statement.executeQuery();
 
 			List<T> records = new LinkedList<>();
@@ -129,15 +129,15 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public <T extends ResourceRecord> List<T> getAllByType(Class<T> clazz) throws ResourceAccessException {
+	public <T extends ResourceRecord> List<T> getAllByType(Class<T> type) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE class = ?");
+				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE type = ?");
 		) {
-			if (clazz.getSimpleName().equals("RecordData"))
-				throw new IllegalArgumentException("Invalid class name: " + clazz.getSimpleName());
+			if (type.getSimpleName().equals("RecordData"))
+				throw new IllegalArgumentException("Invalid type name: " + type.getSimpleName());
 
-			statement.setString(1, clazz.getSimpleName());
+			statement.setString(1, type.getSimpleName());
 			ResultSet resultSet = statement.executeQuery();
 
 			List<T> records = new LinkedList<>();
@@ -153,15 +153,15 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public <T extends ResourceRecord> List<T> deleteAllByType(Class<T> clazz) throws ResourceAccessException {
+	public <T extends ResourceRecord> List<T> deleteAllByType(Class<T> type) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE class = ? RETURNING *");
+				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE type = ? RETURNING *");
 		) {
-			if (clazz.getSimpleName().equals("RecordData"))
-				throw new IllegalArgumentException("Invalid class name: " + clazz.getSimpleName());
+			if (type.getSimpleName().equals("RecordData"))
+				throw new IllegalArgumentException("Invalid type name: " + type.getSimpleName());
 
-			statement.setString(1, clazz.getSimpleName());
+			statement.setString(1, type.getSimpleName());
 			ResultSet resultSet = statement.executeQuery();
 
 			List<T> records = new LinkedList<>();
@@ -180,7 +180,7 @@ public class SQLResourceRepository implements ResourceRepository {
 		var name = new DomainName(resultSet.getString("name"));
 		int timeToLive = resultSet.getInt("time_to_live");
 		MemorySegment data = MemorySegment.ofArray(resultSet.getBytes("data"));
-		return switch (resultSet.getString("class")) {
+		return switch (resultSet.getString("type")) {
 			case "ARecord" -> ARecord.fromData(name, timeToLive, data);
 			case "NSRecord" -> NSRecord.fromData(name, timeToLive, data);
 			case "CNameRecord" -> CNameRecord.fromData(name, timeToLive, data);
@@ -232,17 +232,17 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public <T extends ResourceRecord> List<T> getAllByNameAndType(DomainName name, Class<T> clazz) throws ResourceAccessException {
+	public <T extends ResourceRecord> List<T> getAllByNameAndType(DomainName name, Class<T> type) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE name = ? AND class = ?");
+				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE name = ? AND type = ?");
 		) {
-			String className = clazz.getSimpleName();
-			if (className.equals("RecordData"))
-				throw new IllegalArgumentException("Invalid class name: " + className);
+			String typeName = type.getSimpleName();
+			if (typeName.equals("RecordData"))
+				throw new IllegalArgumentException("Invalid type name: " + typeName);
 
 			statement.setString(1, name.name());
-			statement.setString(2, className);
+			statement.setString(2, typeName);
 			ResultSet resultSet = statement.executeQuery();
 
 			List<T> records = new LinkedList<>();
@@ -250,7 +250,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			while (resultSet.next()) {
 				if (!resultSet.getString("name").equals(name.name()))
 					throw new ResourceAccessException("Name mismatch from database query");
-				if (!resultSet.getString("class").equals(className))
+				if (!resultSet.getString("type").equals(typeName))
 					throw new ResourceAccessException("Class mismatch from database query");
 
 				records.add((T) fromResultSet(resultSet));
