@@ -22,7 +22,6 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<DNSAnswe
 
 	public static DNSMessage parseMessage(MemorySegment data) {
 		var header = DNSHeader.fromData(data);
-		System.out.println(header);
 		var querySegment = data.asSlice(header.byteSize());
 		int queryOffset = 0;
 
@@ -52,6 +51,38 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<DNSAnswe
 				+ answers.stream().mapToInt(DNSAnswer::byteSize).sum()
 				+ authorities.stream().mapToInt(DNSAnswer::byteSize).sum()
 				+ additional.stream().mapToInt(DNSAnswer::byteSize).sum();
+	}
+
+	public boolean needsTruncation() {
+		return byteSize() > 512;
+	}
+
+	public MemorySegment toTruncatedMemorySegment(SegmentAllocator allocator) {
+		var header = needsTruncation() ? this.header.asTruncated() : this.header;
+
+		MemorySegment segment = allocator.allocate(byteSize());
+		header.apply(segment);
+		int offset = header.byteSize();
+
+		for (var query : queries) {
+			query.apply(segment.asSlice(offset));
+			offset += query.byteSize();
+		}
+		for (var answer : answers) {
+			answer.apply(segment.asSlice(offset));
+			offset += answer.byteSize();
+		}
+		for (var authority : authorities) {
+			authority.apply(segment.asSlice(offset));
+			offset += authority.byteSize();
+		}
+		for (var additional : additional) {
+			additional.apply(segment.asSlice(offset));
+			offset += additional.byteSize();
+		}
+
+		if (needsTruncation()) return segment.asSlice(0, 512);
+		else return segment;
 	}
 
 	public MemorySegment toMemorySegment(SegmentAllocator allocator) {

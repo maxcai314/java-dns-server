@@ -15,7 +15,9 @@ import java.util.LinkedList;
 
 public class Server {
 	public static void main(String[] args) throws IOException {
-		try (var channel = DatagramChannel.open().bind(new InetSocketAddress(53))) {
+		try (
+				var channel = DatagramChannel.open().bind(new InetSocketAddress(53))
+		) {
 			SegmentAllocator allocator = SegmentAllocator.prefixAllocator(MemorySegment.ofArray(new byte[65535]));
 			SQLResourceRepository controller = new SQLResourceRepository(allocator);
 			controller.clear();
@@ -33,6 +35,7 @@ public class Server {
 			while (!Thread.interrupted()) {
 				try {
 					var clientAddress = channel.receive(buffer);
+					System.out.println(buffer.position() + " bytes received");
 					buffer.flip();
 					var segment = MemorySegment.ofBuffer(buffer);
 
@@ -58,9 +61,11 @@ public class Server {
 
 					var header = request.header().asMinimalAnswer(numAnswered);
 					var response = new DNSMessage(header, request.queries(), answers, List.of(), List.of());
-					var responseSegment = response.toMemorySegment(allocator);
+					var responseSegment = response.toTruncatedMemorySegment(allocator); // via UDP
 
-					System.out.println("\nSending response: to " + clientAddress);
+					System.out.println("Truncating: " + response.needsTruncation());
+					System.out.println("Response: " + response);
+					System.out.println("\nSending response to " + clientAddress);
 					channel.send(responseSegment.asByteBuffer(), clientAddress);
 				} catch (Exception e) {
 					e.printStackTrace();

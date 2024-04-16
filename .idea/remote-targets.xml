@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteTargetsManager">
+    <targets>
+      <target name="maxster@xz.ax:22" type="ssh/sftp" uuid="7135a8cb-1ba6-4737-a845-e40df45f3cb8">
+        <config>
+          <option name="projectRootOnTarget" value="/home/maxster/java-dns-server" />
+          <option name="serverName" value="maxster@xz.ax:22 key" />
+          <option name="useRsync" value="true" />
+        </config>
+        <ContributedStateBase type="JavaLanguageRuntime">
+          <config>
+            <option name="homePath" value="/usr/lib/jvm/jdk-22" />
+            <option name="javaVersionString" value="22" />
+          </config>
+        </ContributedStateBase>
+      </target>
+    </targets>
+  </component>
+</project>

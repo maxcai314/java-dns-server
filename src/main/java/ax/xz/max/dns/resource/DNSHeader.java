@@ -25,7 +25,7 @@ public record DNSHeader(
 	public short flags() {
 		short result = 0;
 		if (isResponse) result |= (short)         0b1000_0000_0000_0000;
-		result |= (short) ((opcode << 11) &       0b0111_1000_0000_0000);
+		result |= (short) (((int) opcode << 11) & 0b0111_1000_0000_0000);
 		if (isAuthoritative) result |= (short)    0b0000_0100_0000_0000;
 		if (isTruncated) result |= (short)        0b0000_0010_0000_0000;
 		if (recursionDesired) result |= (short)   0b0000_0001_0000_0000;
@@ -77,8 +77,8 @@ public record DNSHeader(
 		return new DNSHeader(
 				id,
 				true,
-				(byte) 0,
-				false,
+				opcode,
+				true, // temporarily authoritative
 				false,
 				false,
 				false,
@@ -87,6 +87,23 @@ public record DNSHeader(
 				numAnswered, // answer each question
 				(short) 0,
 				(short) 0
+		);
+	}
+
+	public DNSHeader asTruncated() {
+		return new DNSHeader(
+				id,
+				isResponse,
+				opcode,
+				isAuthoritative,
+				true,
+				recursionDesired,
+				recursionAvailable,
+				responseCode,
+				numQuestions,
+				numAnswers,
+				numNS,
+				numAdditional
 		);
 	}
 }
