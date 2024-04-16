@@ -3,9 +3,10 @@ package ax.xz.max.dns.repository;
 import ax.xz.max.dns.resource.*;
 import org.sqlite.SQLiteDataSource;
 
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.sql.*;
-import java.util.Collection;
+import java.util.List;
 import java.util.LinkedList;
 
 public class SQLResourceRepository implements ResourceRepository {
@@ -23,7 +24,7 @@ public class SQLResourceRepository implements ResourceRepository {
 				Connection connection = dataSource.getConnection();
 				Statement statement = connection.createStatement();
 		) {
-			statement.setQueryTimeout(30);
+			statement.setQueryTimeout(30); // todo: bad: "class" should actually be "type"
 			statement.executeUpdate("CREATE TABLE IF NOT EXISTS records ( id Integer PRIMARY KEY, name Varchar(255) NOT NULL, class TEXT NOT NULL, time_to_live integer NOT NULL, data Varbinary(65535) NOT NULL )");
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to initialize database", e);
@@ -61,7 +62,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public Collection<ResourceRecord> delete(ResourceRecord record) throws ResourceAccessException {
+	public List<ResourceRecord> delete(ResourceRecord record) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND class = ? AND time_to_live = ? AND data = ? RETURNING *");
@@ -72,7 +73,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setBytes(4, record.recordData(allocator).asByteBuffer().array());
 			ResultSet resultSet = statement.executeQuery();
 
-			Collection<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new LinkedList<>();
 
 			while (resultSet.next()) {
 				records.add(fromResultSet(resultSet));
@@ -85,7 +86,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public Collection<ResourceRecord> deleteAllByName(ResourceRecord record) throws ResourceAccessException {
+	public List<ResourceRecord> deleteAllByName(ResourceRecord record) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? RETURNING *");
@@ -93,7 +94,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setString(1, record.name().name());
 			ResultSet resultSet = statement.executeQuery();
 
-			Collection<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new LinkedList<>();
 
 			while (resultSet.next()) {
 				records.add(fromResultSet(resultSet));
@@ -106,7 +107,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public <T extends ResourceRecord> Collection<T> deleteAllByNameAndType(DomainName name, Class<T> clazz) throws ResourceAccessException {
+	public <T extends ResourceRecord> List<T> deleteAllByNameAndType(DomainName name, Class<T> clazz) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND class = ? RETURNING *");
@@ -118,7 +119,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setString(2, clazz.getSimpleName());
 			ResultSet resultSet = statement.executeQuery();
 
-			Collection<T> records = new LinkedList<>();
+			List<T> records = new LinkedList<>();
 
 			while (resultSet.next()) {
 				records.add((T) fromResultSet(resultSet));
@@ -131,7 +132,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public <T extends ResourceRecord> Collection<T> getAllByType(Class<T> clazz) throws ResourceAccessException {
+	public <T extends ResourceRecord> List<T> getAllByType(Class<T> clazz) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE class = ?");
@@ -142,7 +143,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setString(1, clazz.getSimpleName());
 			ResultSet resultSet = statement.executeQuery();
 
-			Collection<T> records = new LinkedList<>();
+			List<T> records = new LinkedList<>();
 
 			while (resultSet.next()) {
 				records.add((T) fromResultSet(resultSet));
@@ -155,7 +156,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public <T extends ResourceRecord> Collection<T> deleteAllByType(Class<T> clazz) throws ResourceAccessException {
+	public <T extends ResourceRecord> List<T> deleteAllByType(Class<T> clazz) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE class = ? RETURNING *");
@@ -166,7 +167,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setString(1, clazz.getSimpleName());
 			ResultSet resultSet = statement.executeQuery();
 
-			Collection<T> records = new LinkedList<>();
+			List<T> records = new LinkedList<>();
 
 			while (resultSet.next()) {
 				records.add((T) fromResultSet(resultSet));
@@ -181,7 +182,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	private ResourceRecord fromResultSet(ResultSet resultSet) throws SQLException {
 		var name = new DomainName(resultSet.getString("name"));
 		int timeToLive = resultSet.getInt("time_to_live");
-		byte[] data = resultSet.getBytes("data");
+		MemorySegment data = MemorySegment.ofArray(resultSet.getBytes("data"));
 		return switch (resultSet.getString("class")) {
 			case "ARecord" -> ARecord.fromData(name, timeToLive, data);
 			case "NSRecord" -> NSRecord.fromData(name, timeToLive, data);
@@ -191,13 +192,13 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public Collection<ResourceRecord> getAll() throws ResourceAccessException {
+	public List<ResourceRecord> getAll() throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				Statement statement = connection.createStatement();
 				ResultSet resultSet = statement.executeQuery("SELECT * FROM records");
 		) {
-			Collection<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new LinkedList<>();
 
 			while (resultSet.next()) {
 				records.add(fromResultSet(resultSet));
@@ -210,7 +211,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public Collection<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException {
+	public List<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE name = ?");
@@ -218,7 +219,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setString(1, name.name());
 			ResultSet resultSet = statement.executeQuery();
 
-			Collection<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new LinkedList<>();
 
 			while (resultSet.next()) {
 				if (!resultSet.getString("name").equals(name.name()))
@@ -234,7 +235,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public <T extends ResourceRecord> Collection<T> getAllByNameAndType(DomainName name, Class<T> clazz) throws ResourceAccessException {
+	public <T extends ResourceRecord> List<T> getAllByNameAndType(DomainName name, Class<T> clazz) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE name = ? AND class = ?");
@@ -247,7 +248,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setString(2, className);
 			ResultSet resultSet = statement.executeQuery();
 
-			Collection<T> records = new LinkedList<>();
+			List<T> records = new LinkedList<>();
 
 			while (resultSet.next()) {
 				if (!resultSet.getString("name").equals(name.name()))

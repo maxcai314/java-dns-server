@@ -2,6 +2,7 @@ package ax.xz.max.dns.resource;
 
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
@@ -45,22 +46,23 @@ public record DomainName(String name) {
 		slice.set(NETWORK_BYTE, offset, (byte) 0); // technically unnecessary; null-terminated
 	}
 
-	public static DomainName fromData(byte[] data) {
+	public static DomainName fromData(MemorySegment data) {
 		StringBuilder builder = new StringBuilder();
-		int remaining = data[0];
+		int remaining = data.get(NETWORK_BYTE, 0);
 		int index = 1;
 		while (true) {
-			builder.append((char) data[index]);
+			builder.append((char) data.get(NETWORK_BYTE, index));
 			index++;
 			remaining--;
 			if (remaining == 0) {
-				if (data[index] == 0) break;
+				byte nextByte = data.get(NETWORK_BYTE, index);
+				if (nextByte == 0) break;
 				builder.append('.');
-				remaining = data[index];
+				remaining = nextByte;
 				index++;
 			}
 
-			if (index >= data.length) throw new IllegalArgumentException("Failed to parse data");
+			if (index >= data.byteSize()) throw new IllegalArgumentException("Failed to parse data");
 		}
 		return new DomainName(builder.toString());
 	}

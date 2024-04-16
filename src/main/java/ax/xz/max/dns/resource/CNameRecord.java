@@ -11,7 +11,7 @@ public record CNameRecord(DomainName name, int timeToLive, DomainName alias) imp
 		return segment;
 	}
 
-	public static CNameRecord fromData(DomainName name, int timeToLive, byte[] data) {
+	public static CNameRecord fromData(DomainName name, int timeToLive, MemorySegment data) {
 		return new CNameRecord(name, timeToLive, DomainName.fromData(data));
 	}
 }

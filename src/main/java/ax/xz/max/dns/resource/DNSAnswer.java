@@ -6,8 +6,11 @@ import java.lang.foreign.SegmentAllocator;
 import static java.lang.foreign.ValueLayout.*;
 import static java.nio.ByteOrder.BIG_ENDIAN;
 
-public record DNSPacket(MemorySegment data) {
-	public DNSPacket {
+/**
+ * Represents a DNS resource record, in bytes of memory.
+ */
+public record DNSAnswer(MemorySegment data) {
+	public DNSAnswer {
 		data = data.asReadOnly();
 	}
 
@@ -15,7 +18,7 @@ public record DNSPacket(MemorySegment data) {
 	private static final OfShort NETWORK_SHORT = JAVA_SHORT.withByteAlignment(1).withOrder(BIG_ENDIAN);
 	private static final OfInt NETWORK_INT = JAVA_INT.withByteAlignment(1).withOrder(BIG_ENDIAN);
 
-	public static DNSPacket of(SegmentAllocator allocator, ResourceRecord resource) {
+	public static DNSAnswer of(SegmentAllocator allocator, ResourceRecord resource) {
 		long size =  resource.recordData(allocator).byteSize() + 10 + resource.name().byteSize();
 		var segment = allocator.allocate(size);
 
@@ -31,7 +34,22 @@ public record DNSPacket(MemorySegment data) {
 		trailerSlice.set(NETWORK_SHORT, 8, (short) resource.recordData(allocator).byteSize()); // rdlength
 
 		rdataSlice.copyFrom(resource.recordData(allocator));
-		return new DNSPacket(segment);
+		return new DNSAnswer(segment);
+	}
+
+	public int byteSize() {
+		return (int) data.byteSize();
+	}
+
+	/**
+	 * Parses a DNS answer from the start of a memory segment.
+	 */
+	public static DNSAnswer parseFrom(MemorySegment slice) {
+		DomainName name = DomainName.fromData(slice);
+		MemorySegment trailer = slice.asSlice(name.byteSize());
+		short dataLength = trailer.get(NETWORK_SHORT, name.byteSize() + 8);
+		MemorySegment data = slice.asSlice(0, name.byteSize() + 10 + dataLength);
+		return new DNSAnswer(data);
 	}
 
 	private static short typeIdOf(ResourceRecord resource) {
@@ -40,5 +58,10 @@ public record DNSPacket(MemorySegment data) {
 			case NSRecord __ -> 2;
 			case CNameRecord __ -> 5;
 		};
+	}
+
+	public void apply(MemorySegment slice) {
+		if (slice.byteSize() < byteSize()) throw new IllegalArgumentException("Slice too small!");
+		slice.copyFrom(data);
 	}
 }
