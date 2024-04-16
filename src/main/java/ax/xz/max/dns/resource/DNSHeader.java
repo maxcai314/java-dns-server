@@ -32,6 +32,7 @@ public record DNSHeader(
 		if (recursionAvailable) result |= (short) 0b0000_0000_1000_0000;
 		result |= (short) (responseCode &         0b0000_0000_0000_1111);
 
+		System.out.println("flags: " + Integer.toBinaryString(Short.toUnsignedInt(result)));
 		return result;
 	}
 
