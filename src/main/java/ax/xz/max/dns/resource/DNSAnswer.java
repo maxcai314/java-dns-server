@@ -1,7 +1,6 @@
 package ax.xz.max.dns.resource;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 
 import static java.lang.foreign.ValueLayout.*;
 import static java.nio.ByteOrder.BIG_ENDIAN;
@@ -18,9 +17,9 @@ public record DNSAnswer(MemorySegment data) {
 	private static final OfShort NETWORK_SHORT = JAVA_SHORT.withByteAlignment(1).withOrder(BIG_ENDIAN);
 	private static final OfInt NETWORK_INT = JAVA_INT.withByteAlignment(1).withOrder(BIG_ENDIAN);
 
-	public static DNSAnswer of(SegmentAllocator allocator, ResourceRecord resource) {
-		long size =  resource.recordData(allocator).byteSize() + 10 + resource.name().byteSize();
-		var segment = allocator.allocate(size);
+	public static DNSAnswer of(ResourceRecord resource) {
+		int size = (int) resource.recordData().byteSize() + 10 + resource.name().byteSize();
+		var segment = MemorySegment.ofArray(new byte[size]);
 
 		var nameSlice = segment.asSlice(0, resource.name().byteSize());
 		var trailerSlice = segment.asSlice(nameSlice.byteSize(), 10);
@@ -31,9 +30,9 @@ public record DNSAnswer(MemorySegment data) {
 		trailerSlice.set(NETWORK_SHORT, 0, typeIdOf(resource)); // type
 		trailerSlice.set(NETWORK_SHORT, 2, (short) 1); // class
 		trailerSlice.set(NETWORK_INT,   4, resource.timeToLive()); // ttl
-		trailerSlice.set(NETWORK_SHORT, 8, (short) resource.recordData(allocator).byteSize()); // rdlength
+		trailerSlice.set(NETWORK_SHORT, 8, (short) resource.recordData().byteSize()); // rdlength
 
-		rdataSlice.copyFrom(resource.recordData(allocator));
+		rdataSlice.copyFrom(resource.recordData());
 		return new DNSAnswer(segment);
 	}
 

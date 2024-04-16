@@ -4,16 +4,13 @@ import ax.xz.max.dns.resource.*;
 import org.sqlite.SQLiteDataSource;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 import java.sql.*;
 import java.util.List;
 import java.util.LinkedList;
 
 public class SQLResourceRepository implements ResourceRepository {
 	private final SQLiteDataSource dataSource;
-	private final SegmentAllocator allocator;
-	public SQLResourceRepository(SegmentAllocator allocator) throws ResourceAccessException {
-		this.allocator = allocator;
+	public SQLResourceRepository() throws ResourceAccessException {
 		dataSource = new SQLiteDataSource();
 		dataSource.setUrl("jdbc:sqlite:records.db");
 		initialize();
@@ -54,7 +51,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setString(1, record.name().name());
 			statement.setString(2, record.getClass().getSimpleName());
 			statement.setInt(3, record.timeToLive());
-			statement.setBytes(4, record.recordData(allocator).asByteBuffer().array());
+			statement.setBytes(4, record.recordData().asByteBuffer().array());
 			statement.executeUpdate();
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to insert record", e);
@@ -70,7 +67,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setString(1, record.name().name());
 			statement.setString(2, record.getClass().getSimpleName());
 			statement.setInt(3, record.timeToLive());
-			statement.setBytes(4, record.recordData(allocator).asByteBuffer().array());
+			statement.setBytes(4, record.recordData().asByteBuffer().array());
 			ResultSet resultSet = statement.executeQuery();
 
 			List<ResourceRecord> records = new LinkedList<>();

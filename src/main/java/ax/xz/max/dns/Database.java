@@ -6,14 +6,11 @@ import ax.xz.max.dns.resource.CNameRecord;
 import ax.xz.max.dns.resource.DomainName;
 import ax.xz.max.dns.resource.NSRecord;
 
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 import java.net.Inet4Address;
 
 public class Database {
 	public static void main(String[] args) {
-		SegmentAllocator allocator = SegmentAllocator.prefixAllocator(MemorySegment.ofArray(new byte[65535]));
-		SQLResourceRepository controller = new SQLResourceRepository(allocator);
+		SQLResourceRepository controller = new SQLResourceRepository();
 		controller.clear();
 
 		var com = new ARecord(new DomainName("example.com"), 10, Inet4Address.ofLiteral("127.0.0.1"));

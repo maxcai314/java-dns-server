@@ -5,7 +5,6 @@ import ax.xz.max.dns.resource.*;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -18,8 +17,7 @@ public class Server {
 		try (
 				var channel = DatagramChannel.open().bind(new InetSocketAddress(53))
 		) {
-			SegmentAllocator allocator = SegmentAllocator.prefixAllocator(MemorySegment.ofArray(new byte[65535]));
-			SQLResourceRepository controller = new SQLResourceRepository(allocator);
+			SQLResourceRepository controller = new SQLResourceRepository();
 			controller.clear();
 
 			var com = new ARecord(
@@ -55,13 +53,13 @@ public class Server {
 						var records = controller.getAllByNameAndType(query.name(), query.clazz());
 						if (records.isEmpty()) continue;
 						System.out.println("Found records for query");
-						answers.add(DNSAnswer.of(allocator, records.getFirst()));
+						answers.add(DNSAnswer.of(records.getFirst()));
 						numAnswered++;
 					}
 
 					var header = request.header().asMinimalAnswer(numAnswered);
 					var response = new DNSMessage(header, request.queries(), answers, List.of(), List.of());
-					var responseSegment = response.toTruncatedMemorySegment(allocator); // via UDP
+					var responseSegment = response.toTruncatedMemorySegment(); // via UDP
 
 					System.out.println("Truncating: " + response.needsTruncation());
 					System.out.println("Response: " + response);

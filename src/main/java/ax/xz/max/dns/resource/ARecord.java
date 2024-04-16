@@ -1,7 +1,6 @@
 package ax.xz.max.dns.resource;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
@@ -11,7 +10,7 @@ import static java.nio.ByteOrder.BIG_ENDIAN;
 
 public record ARecord(DomainName name, int timeToLive, Inet4Address address) implements ResourceRecord {
 	@Override
-	public MemorySegment recordData(SegmentAllocator allocator) {
+	public MemorySegment recordData() {
 		return MemorySegment.ofArray(address.getAddress());
 	}
 
