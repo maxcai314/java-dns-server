@@ -74,7 +74,7 @@ public record DNSHeader(
 		);
 	}
 
-	public DNSHeader asMinimalAnswer(short numAnswered) {
+	public DNSHeader asMinimalAnswer(short numAnswered, short numAuthority, short numAdditional) {
 		return new DNSHeader(
 				id,
 				true,
@@ -86,8 +86,8 @@ public record DNSHeader(
 				(byte) 0,
 				numQuestions,
 				numAnswered, // answer each question
-				(short) 0,
-				(short) 0
+				numAuthority,
+				numAdditional
 		);
 	}
 

@@ -26,7 +26,14 @@ public class Server {
 					Inet4Address.ofLiteral("65.108.126.123")
 			);
 
+			var www = new CNameRecord(
+					new DomainName("www.testing.xz.ax"),
+					10,
+					new DomainName("testing.xz.ax")
+			);
+
 			controller.insert(com);
+			controller.insert(www);
 
 			ByteBuffer buffer = ByteBuffer.allocate(65535);
 
@@ -47,18 +54,74 @@ public class Server {
 					System.out.println("Additional: " + request.additional());
 					System.out.println();
 					
-					short numAnswered = 0;
 					LinkedList<DNSAnswer> answers = new LinkedList<>();
-					for (var query : request.queries()) {
-						var records = controller.getAllByNameAndType(query.name(), query.clazz());
-						if (records.isEmpty()) continue;
-						System.out.println("Found records for query");
-						answers.add(DNSAnswer.of(records.getFirst()));
-						numAnswered++;
+					LinkedList<DNSAnswer> authorities = new LinkedList<>();
+					LinkedList<DNSAnswer> additional = new LinkedList<>();
+					for (var query : request.queries()) try {
+						controller.getAllByType(NSRecord.class).stream()
+								.filter(r -> r.nameserver().equals(query.name()))
+								.findAny()
+								.map(DNSAnswer::of)
+								.ifPresent(additional::add);
+
+						controller.getAllByType(CNameRecord.class).stream()
+								.filter(r -> r.alias().equals(query.name()))
+								.map(DNSAnswer::of)
+								.forEach(additional::add);
+
+						switch (query.type().getSimpleName()) {
+							case "ARecord", "AAAARecord" -> {
+								controller.getAllByType(NSRecord.class).stream()
+										.filter(r -> r.name().equals(query.name()))
+										.findAny()
+										.map(DNSAnswer::of)
+										.ifPresent(additional::add);
+
+								controller.getAllByType(CNameRecord.class).stream()
+										.filter(r -> r.name().equals(query.name()))
+										.map(DNSAnswer::of)
+										.forEach(additional::add);
+							}
+
+							default ->
+								controller.getAllByNameAndType(query.name(), ARecord.class).stream()
+										.findAny()
+										.map(DNSAnswer::of)
+										.ifPresent(authorities::add);
+						}
+
+						var match = controller.getAllByNameAndType(query.name(), query.type()).stream()
+								.findAny();
+						if (match.isEmpty()) continue;
+						var answer = match.get();
+
+						answers.add(DNSAnswer.of(answer));
+
+						switch (answer) {
+							case NSRecord nsRecord ->
+									controller.getAllByNameAndType(nsRecord.nameserver(), ARecord.class).stream()
+										.findAny()
+										.map(DNSAnswer::of)
+										.ifPresent(authorities::add);
+
+							case CNameRecord cNameRecord ->
+									controller.getAllByNameAndType(cNameRecord.alias(), ARecord.class).stream()
+										.findAny()
+										.map(DNSAnswer::of)
+										.ifPresent(authorities::add);
+
+							default -> {}
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
 					}
 
-					var header = request.header().asMinimalAnswer(numAnswered);
-					var response = new DNSMessage(header, request.queries(), answers, List.of(), List.of());
+					var header = request.header().asMinimalAnswer(
+							(short) answers.size(),
+							(short) authorities.size(),
+							(short) additional.size()
+					);
+					var response = new DNSMessage(header, request.queries(), answers, authorities, additional);
 					var responseSegment = response.toTruncatedMemorySegment(); // via UDP
 
 					System.out.println("Truncating: " + response.needsTruncation());

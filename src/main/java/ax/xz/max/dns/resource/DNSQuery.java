@@ -9,21 +9,21 @@ import static java.nio.ByteOrder.BIG_ENDIAN;
 /**
  * Represents a DNS query. Each request contains {@link DNSHeader#numQuestions()} queries.
  */
-public record DNSQuery(DomainName name, short type, Class<? extends ResourceRecord> clazz) {
+public record DNSQuery(DomainName name, Class<? extends ResourceRecord> type, short classID) {
 	public DNSQuery {
-		if (clazz.getSimpleName().equals("ResourceRecord")) throw new IllegalArgumentException("Invalid ResourceRecord");
+		if (type.getSimpleName().equals("ResourceRecord")) throw new IllegalArgumentException("Invalid ResourceRecord");
 	}
 
-	private short classID() {
-		return switch (clazz.getSimpleName()) {
+	private short typeID() {
+		return switch (type.getSimpleName()) {
 			case "ARecord" -> 1;
 			case "NSRecord" -> 2;
 			case "CNameRecord" -> 5;
-			default -> throw new IllegalArgumentException("Unknown class: " + clazz.getSimpleName());
+			default -> throw new IllegalArgumentException("Unknown class: " + type.getSimpleName());
 		};
 	}
 
-	private static Class<? extends ResourceRecord> fromClassID(short classID) {
+	private static Class<? extends ResourceRecord> fromTypeID(short classID) {
 		return switch (classID) {
 			case 1 -> ARecord.class;
 			case 2 -> NSRecord.class;
@@ -39,7 +39,7 @@ public record DNSQuery(DomainName name, short type, Class<? extends ResourceReco
 		var trailer = data.asSlice(name.byteSize(), 4);
 		short type = trailer.get(NETWORK_SHORT, 0);
 		short classID = trailer.get(NETWORK_SHORT, 2);
-		return new DNSQuery(name, type, fromClassID(classID));
+		return new DNSQuery(name, fromTypeID(type), classID);
 	}
 
 	public int byteSize() {
@@ -50,8 +50,8 @@ public record DNSQuery(DomainName name, short type, Class<? extends ResourceReco
 		if (slice.byteSize() < byteSize()) throw new IllegalArgumentException("Slice too small!");
 		name.apply(slice);
 		var trailer = slice.asSlice(name.byteSize(), 4);
-		trailer.set(NETWORK_SHORT, 0, type);
-		trailer.set(NETWORK_SHORT, 2, classID());
+		trailer.set(NETWORK_SHORT, 0, typeID());
+		trailer.set(NETWORK_SHORT, 2, classID);
 	}
 
 }

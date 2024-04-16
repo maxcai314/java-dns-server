@@ -5,8 +5,10 @@ import org.sqlite.SQLiteDataSource;
 
 import java.lang.foreign.MemorySegment;
 import java.sql.*;
+import java.util.HashMap;
 import java.util.List;
 import java.util.LinkedList;
+import java.util.Map;
 
 public class SQLResourceRepository implements ResourceRepository {
 	private final SQLiteDataSource dataSource;
