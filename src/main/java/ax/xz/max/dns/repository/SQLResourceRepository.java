@@ -176,7 +176,7 @@ public class SQLResourceRepository implements ResourceRepository {
 		}
 	}
 
-	private ResourceRecord fromResultSet(ResultSet resultSet) throws SQLException {
+	private ResourceRecord fromResultSet(ResultSet resultSet) throws SQLException, ResourceAccessException {
 		var name = new DomainName(resultSet.getString("name"));
 		int timeToLive = resultSet.getInt("time_to_live");
 		MemorySegment data = MemorySegment.ofArray(resultSet.getBytes("data"));
@@ -184,7 +184,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			case "ARecord" -> ARecord.fromData(name, timeToLive, data);
 			case "NSRecord" -> NSRecord.fromData(name, timeToLive, data);
 			case "CNameRecord" -> CNameRecord.fromData(name, timeToLive, data);
-			default -> throw new SQLException("Unknown record type");
+			default -> throw new ResourceAccessException("Unknown record type");
 		};
 	}
 
