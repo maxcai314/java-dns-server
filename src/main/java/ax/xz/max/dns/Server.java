@@ -68,25 +68,22 @@ public class Server {
 								.map(DNSAnswer::of)
 								.forEach(additional::add);
 
-						switch (query.type().getSimpleName()) {
-							case "ARecord", "AAAARecord" -> {
-								controller.getAllByType(NSRecord.class).stream()
-										.filter(r -> r.name().equals(query.name()))
-										.findAny()
-										.map(DNSAnswer::of)
-										.ifPresent(additional::add);
+						if (query.type() == ARecord.class) { // or AAAARecord
+							controller.getAllByType(NSRecord.class).stream()
+									.filter(r -> r.name().equals(query.name()))
+									.findAny()
+									.map(DNSAnswer::of)
+									.ifPresent(additional::add);
 
-								controller.getAllByType(CNameRecord.class).stream()
-										.filter(r -> r.name().equals(query.name()))
-										.map(DNSAnswer::of)
-										.forEach(additional::add);
-							}
-
-							default ->
-								controller.getAllByNameAndType(query.name(), ARecord.class).stream()
-										.findAny()
-										.map(DNSAnswer::of)
-										.ifPresent(authorities::add);
+							controller.getAllByType(CNameRecord.class).stream()
+									.filter(r -> r.name().equals(query.name()))
+									.map(DNSAnswer::of)
+									.forEach(additional::add);
+						} else {
+							controller.getAllByNameAndType(query.name(), ARecord.class).stream()
+									.findAny()
+									.map(DNSAnswer::of)
+									.ifPresent(authorities::add);
 						}
 
 						var match = controller.getAllByNameAndType(query.name(), query.type()).stream()
