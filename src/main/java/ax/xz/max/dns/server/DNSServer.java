@@ -11,6 +11,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -60,58 +61,32 @@ public class DNSServer implements AutoCloseable {
 				LinkedList<DNSAnswer> answers = new LinkedList<>();
 				LinkedList<DNSAnswer> authorities = new LinkedList<>();
 				LinkedList<DNSAnswer> additional = new LinkedList<>();
+
 				for (var query : request.queries()) try {
-					repository.getAllByType(NSRecord.class).stream()
-							.filter(r -> r.nameserver().equals(query.name()))
-							.findAny()
-							.map(DNSAnswer::of)
-							.ifPresent(additional::add);
+					LinkedList<DomainName> names = new LinkedList<>();
+					names.add(query.name());
 
-					repository.getAllByType(CNameRecord.class).stream()
-							.filter(r -> r.alias().equals(query.name()))
-							.map(DNSAnswer::of)
-							.forEach(additional::add);
-
-					if (query.type() == ARecord.class) { // or AAAARecord
-						repository.getAllByType(NSRecord.class).stream()
-								.filter(r -> r.name().equals(query.name()))
-								.findAny()
-								.map(DNSAnswer::of)
-								.ifPresent(additional::add);
-
-						repository.getAllByType(CNameRecord.class).stream()
-								.filter(r -> r.name().equals(query.name()))
-								.map(DNSAnswer::of)
-								.forEach(additional::add);
-					} else {
-						repository.getAllByNameAndType(query.name(), ARecord.class).stream()
-								.findAny()
-								.map(DNSAnswer::of)
-								.ifPresent(authorities::add);
+					if (query.type() != CNameRecord.class) {
+						repository.getAllByNameAndType(query.name(), CNameRecord.class).stream()
+								.map(CNameRecord::alias)
+								.forEach(names::add); // add other names to try
 					}
 
-					var match = repository.getAllByNameAndType(query.name(), query.type()).stream()
+					// check if any of the names give answers
+					var match = names.stream()
+							.map(a -> Map.entry(a, repository.getAllByNameAndType(a, query.type()).stream().findAny()))
+							.filter(e -> e.getValue().isPresent())
+							.map(e -> Map.entry(e.getKey(), e.getValue().get()))
 							.findAny();
+
 					if (match.isEmpty()) continue;
-					var answer = match.get();
 
+					var answerName = match.get().getKey();
+					var answer = match.get().getValue();
+
+					if (!answerName.equals(query.name())) // contextualize if necessary
+						answers.add(DNSAnswer.of(repository.getAllByNameAndType(query.name(), CNameRecord.class).getFirst()));
 					answers.add(DNSAnswer.of(answer));
-
-					switch (answer) {
-						case NSRecord nsRecord ->
-								repository.getAllByNameAndType(nsRecord.nameserver(), ARecord.class).stream()
-										.findAny()
-										.map(DNSAnswer::of)
-										.ifPresent(authorities::add);
-
-						case CNameRecord cNameRecord ->
-								repository.getAllByNameAndType(cNameRecord.alias(), ARecord.class).stream()
-										.findAny()
-										.map(DNSAnswer::of)
-										.ifPresent(authorities::add);
-
-						default -> {}
-					}
 				} catch (Exception e) {
 					logger.error("Error while processing query", e);
 				}
@@ -126,7 +101,8 @@ public class DNSServer implements AutoCloseable {
 
 				logger.info("Truncating: " + response.needsTruncation());
 				logger.info("Response: " + response);
-				logger.info("\nSending response to " + clientAddress);
+				logger.info("Answers: " + answers);
+				logger.info("Sending response to " + clientAddress);
 
 				channel.send(responseSegment.asByteBuffer(), clientAddress);
 			} catch (Exception e) {
