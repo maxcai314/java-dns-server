@@ -182,6 +182,7 @@ public class SQLResourceRepository implements ResourceRepository {
 		MemorySegment data = MemorySegment.ofArray(resultSet.getBytes("data"));
 		return switch (resultSet.getString("type")) {
 			case "ARecord" -> ARecord.fromData(name, timeToLive, data);
+			case "AAAARecord" -> AAAARecord.fromData(name, timeToLive, data);
 			case "NSRecord" -> NSRecord.fromData(name, timeToLive, data);
 			case "CNameRecord" -> CNameRecord.fromData(name, timeToLive, data);
 			default -> throw new ResourceAccessException("Unknown record type");
