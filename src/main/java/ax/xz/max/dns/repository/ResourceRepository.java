@@ -13,7 +13,7 @@ public interface ResourceRepository {
 	List<ResourceRecord> getAll() throws ResourceAccessException;
 
 	List<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException;
-	List<ResourceRecord> deleteAllByName(ResourceRecord record) throws ResourceAccessException;
+	List<ResourceRecord> deleteAllByName(DomainName name) throws ResourceAccessException;
 
 	List<ResourceRecord> getAllByNameAndType(DomainName name, short type) throws ResourceAccessException;
 	List<ResourceRecord> deleteAllByNameAndType(DomainName name, short type) throws ResourceAccessException;

@@ -87,19 +87,19 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public List<ResourceRecord> deleteAllByName(ResourceRecord record) throws ResourceAccessException {
+	public List<ResourceRecord> deleteAllByName(DomainName name) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? RETURNING type, time_to_live, data");
 		) {
-			statement.setBytes(1, record.name().bytes());
+			statement.setBytes(1, name.bytes());
 			ResultSet resultSet = statement.executeQuery();
 
 			List<ResourceRecord> records = new LinkedList<>();
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
-						record.name(),
+						name,
 						resultSet.getShort("type"),
 						resultSet.getInt("time_to_live"),
 						MemorySegment.ofArray(resultSet.getBytes("data"))
