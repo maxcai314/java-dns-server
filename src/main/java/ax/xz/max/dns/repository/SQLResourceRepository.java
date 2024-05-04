@@ -90,7 +90,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	public List<ResourceRecord> deleteAllByName(ResourceRecord record) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? RETURNING *");
+				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? RETURNING type, time_to_live, data");
 		) {
 			statement.setBytes(1, record.name().bytes());
 			ResultSet resultSet = statement.executeQuery();
@@ -99,7 +99,7 @@ public class SQLResourceRepository implements ResourceRepository {
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
-						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))),
+						record.name(),
 						resultSet.getShort("type"),
 						resultSet.getInt("time_to_live"),
 						MemorySegment.ofArray(resultSet.getBytes("data"))
@@ -115,7 +115,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	public List<ResourceRecord> deleteAllByNameAndType(DomainName name, short type) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND type = ? RETURNING *");
+				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND type = ? RETURNING time_to_live, data");
 		) {
 			statement.setBytes(1, name.bytes());
 			statement.setShort(2, type);
@@ -141,7 +141,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	public List<ResourceRecord> getAllByType(short type) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE type = ?");
+				PreparedStatement statement = connection.prepareStatement("SELECT name, time_to_live, data FROM records WHERE type = ?");
 		) {
 			statement.setShort(1, type);
 			ResultSet resultSet = statement.executeQuery();
@@ -166,7 +166,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	public List<ResourceRecord> deleteAllByType(short type) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE type = ? RETURNING *");
+				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE type = ? RETURNING name, time_to_live, data");
 		) {
 			statement.setShort(1, type);
 			ResultSet resultSet = statement.executeQuery();
@@ -176,7 +176,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
 						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))),
-						resultSet.getShort("type"),
+						type,
 						resultSet.getInt("time_to_live"),
 						MemorySegment.ofArray(resultSet.getBytes("data"))
 				));
@@ -214,7 +214,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	public List<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE name = ?");
+				PreparedStatement statement = connection.prepareStatement("SELECT type, time_to_live, data FROM records WHERE name = ?");
 		) {
 			statement.setBytes(1, name.bytes());
 			ResultSet resultSet = statement.executeQuery();
@@ -239,7 +239,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	public List<ResourceRecord> getAllByNameAndType(DomainName name, short type) throws ResourceAccessException {
 		try (
 				Connection connection = dataSource.getConnection();
-				PreparedStatement statement = connection.prepareStatement("SELECT * FROM records WHERE name = ? AND type = ?");
+				PreparedStatement statement = connection.prepareStatement("SELECT time_to_live, data FROM records WHERE name = ? AND type = ?");
 		) {
 			statement.setBytes(1, name.bytes());
 			statement.setShort(2, type);
