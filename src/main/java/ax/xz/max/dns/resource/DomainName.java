@@ -65,4 +65,11 @@ public record DomainName(String name) {
 		}
 		return new DomainName(builder.toString());
 	}
+
+	public byte[] bytes() {
+		byte[] bytes = new byte[byteSize()];
+		MemorySegment segment = MemorySegment.ofArray(bytes);
+		apply(segment);
+		return bytes;
+	}
 }
