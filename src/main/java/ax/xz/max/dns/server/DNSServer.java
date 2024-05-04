@@ -66,8 +66,9 @@ public class DNSServer implements AutoCloseable {
 					LinkedList<DomainName> names = new LinkedList<>();
 					names.add(query.name());
 
-					if (query.type() != CNameRecord.class) {
-						repository.getAllByNameAndType(query.name(), CNameRecord.class).stream()
+					if (query.type() != CNameRecord.ID) {
+						repository.getAllByNameAndType(query.name(), CNameRecord.ID).stream()
+								.map(CNameRecord.class::cast)
 								.map(CNameRecord::alias)
 								.forEach(names::add); // add other names to try
 					}
@@ -85,7 +86,7 @@ public class DNSServer implements AutoCloseable {
 					var answer = match.get().getValue();
 
 					if (!answerName.equals(query.name())) // contextualize if necessary
-						answers.add(DNSAnswer.of(repository.getAllByNameAndType(query.name(), CNameRecord.class).getFirst()));
+						answers.add(DNSAnswer.of(repository.getAllByNameAndType(query.name(), CNameRecord.ID).getFirst()));
 					answers.add(DNSAnswer.of(answer));
 				} catch (Exception e) {
 					logger.error("Error while processing query", e);

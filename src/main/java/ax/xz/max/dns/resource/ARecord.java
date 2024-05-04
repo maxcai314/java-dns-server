@@ -9,6 +9,8 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.nio.ByteOrder.BIG_ENDIAN;
 
 public record ARecord(DomainName name, int timeToLive, Inet4Address address) implements ResourceRecord {
+	public static final short ID = 1;
+
 	@Override
 	public MemorySegment recordData() {
 		return MemorySegment.ofArray(address.getAddress());

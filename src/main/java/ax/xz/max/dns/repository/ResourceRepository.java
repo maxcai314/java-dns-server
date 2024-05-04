@@ -15,9 +15,9 @@ public interface ResourceRepository {
 	List<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException;
 	List<ResourceRecord> deleteAllByName(ResourceRecord record) throws ResourceAccessException;
 
-	<T extends ResourceRecord> List<T> getAllByNameAndType(DomainName name, Class<T> type) throws ResourceAccessException;
-	<T extends ResourceRecord> List<T> deleteAllByNameAndType(DomainName name, Class<T> type) throws ResourceAccessException;
+	List<ResourceRecord> getAllByNameAndType(DomainName name, short type) throws ResourceAccessException;
+	List<ResourceRecord> deleteAllByNameAndType(DomainName name, short type) throws ResourceAccessException;
 
-	<T extends ResourceRecord> List<T> getAllByType(Class<T> type) throws ResourceAccessException;
-	<T extends ResourceRecord> List<T> deleteAllByType(Class<T> type) throws ResourceAccessException;
+	List<ResourceRecord> getAllByType(short type) throws ResourceAccessException;
+	List<ResourceRecord> deleteAllByType(short type) throws ResourceAccessException;
 }

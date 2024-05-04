@@ -40,15 +40,15 @@ public class Database {
 		System.out.println(controller.getAllByName(new DomainName("www.example.org"))); // empty
 
 		System.out.println("\nprinting all by name and type:");
-		for (var record : controller.getAllByNameAndType(new DomainName("example.org"), ARecord.class))
+		for (var record : controller.getAllByNameAndType(new DomainName("example.org"), ARecord.ID))
 			System.out.println(record);
 
 		System.out.println("\nprinting all by type:");
-		for (var record : controller.getAllByType(ARecord.class))
+		for (var record : controller.getAllByType(ARecord.ID))
 			System.out.println(record);
 
 		System.out.println("\ndeleting all by type:");
-		for (var record : controller.deleteAllByType(ARecord.class))
+		for (var record : controller.deleteAllByType(ARecord.ID))
 			System.out.println(record);
 
 		System.out.println("\nprinting all:");

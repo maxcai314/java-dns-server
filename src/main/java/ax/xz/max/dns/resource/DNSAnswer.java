@@ -27,7 +27,7 @@ public record DNSAnswer(MemorySegment data) {
 
 		resource.name().apply(nameSlice);
 
-		trailerSlice.set(NETWORK_SHORT, 0, resource.typeID()); // type
+		trailerSlice.set(NETWORK_SHORT, 0, resource.type()); // type
 		trailerSlice.set(NETWORK_SHORT, 2, (short) 1); // class
 		trailerSlice.set(NETWORK_INT,   4, resource.timeToLive()); // ttl
 		trailerSlice.set(NETWORK_SHORT, 8, (short) resource.recordData().byteSize()); // rdlength

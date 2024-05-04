@@ -3,6 +3,8 @@ package ax.xz.max.dns.resource;
 import java.lang.foreign.MemorySegment;
 
 public record NSRecord(DomainName name, int timeToLive, DomainName nameserver) implements ResourceRecord {
+	public static final short ID = 2;
+
 	@Override
 	public MemorySegment recordData() {
 		var segment = MemorySegment.ofArray(new byte[nameserver.byteSize()]);
