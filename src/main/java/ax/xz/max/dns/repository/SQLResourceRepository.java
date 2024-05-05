@@ -260,4 +260,45 @@ public class SQLResourceRepository implements ResourceRepository {
 			throw new ResourceAccessException("Failed to get all records", e);
 		}
 	}
+
+	@Override
+	public List<AliasChain> getAllChainsByNameAndType(DomainName name, short type) throws ResourceAccessException {
+		try (
+				Connection connection = dataSource.getConnection();
+				PreparedStatement statement = connection.prepareStatement("""
+						WITH RECURSIVE candidates AS ( SELECT data, time_to_live FROM records WHERE name = ? AND type = ? )
+						SELECT records.name as name, records.time_to_live as time_to_live, records.data as data, candidates.time_to_live as candidate_time_to_live FROM records 
+						CROSS JOIN candidates ON records.name = candidates.data WHERE records.type = ?;""");
+		) {
+			statement.setBytes(1, name.bytes());
+			statement.setShort(2, CNameRecord.ID);
+			statement.setShort(3, type);
+
+			ResultSet resultSet = statement.executeQuery();
+
+			List<AliasChain> chains = new LinkedList<>();
+
+			while (resultSet.next()) {
+				ResourceRecord record = ResourceRecord.fromData(
+						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))),
+						type,
+						resultSet.getInt("time_to_live"),
+						MemorySegment.ofArray(resultSet.getBytes("data"))
+				);
+
+				CNameRecord context = CNameRecord.fromData(
+						name,
+						resultSet.getInt("candidate_time_to_live"),
+						MemorySegment.ofArray(resultSet.getBytes("name"))
+				);
+
+				chains.add(new AliasChain(context, record));
+			}
+
+			return chains;
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to get records", e);
+		}
+	}
+
 }

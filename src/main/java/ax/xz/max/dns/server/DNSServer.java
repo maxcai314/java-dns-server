@@ -54,40 +54,23 @@ public class DNSServer implements AutoCloseable {
 				logger.info("\nReceived request: from " + clientAddress);
 				logger.info("Header: " + request.header());
 				logger.info("Queries: " + request.queries());
-				logger.info("Answers: " + request.answers());
-				logger.info("Authorities: " + request.authorities());
-				logger.info("Additional: " + request.additional());
 
 				LinkedList<DNSAnswer> answers = new LinkedList<>();
 				LinkedList<DNSAnswer> authorities = new LinkedList<>();
 				LinkedList<DNSAnswer> additional = new LinkedList<>();
 
 				for (var query : request.queries()) try {
-					LinkedList<DomainName> names = new LinkedList<>();
-					names.add(query.name());
+					var match = repository.getAllByNameAndType(query.name(), query.type()).stream().findAny();
+					match.map(DNSAnswer::of).ifPresent(answers::add);
 
-					if (query.type() != CNameRecord.ID) {
-						repository.getAllByNameAndType(query.name(), CNameRecord.ID).stream()
-								.map(CNameRecord.class::cast)
-								.map(CNameRecord::alias)
-								.forEach(names::add); // add other names to try
+					if (query.type() != CNameRecord.ID && match.isEmpty()) {
+						// check if any of the names give CNAME chains
+						var cNameMatch = repository.getAllChainsByNameAndType(query.name(), query.type()).stream().findAny();
+						if (cNameMatch.isPresent()) {
+							answers.add(DNSAnswer.of(cNameMatch.get().record()));
+							answers.add(DNSAnswer.of(cNameMatch.get().aliasRecord()));
+						}
 					}
-
-					// check if any of the names give answers
-					var match = names.stream()
-							.map(a -> Map.entry(a, repository.getAllByNameAndType(a, query.type()).stream().findAny()))
-							.filter(e -> e.getValue().isPresent())
-							.map(e -> Map.entry(e.getKey(), e.getValue().get()))
-							.findAny();
-
-					if (match.isEmpty()) continue;
-
-					var answerName = match.get().getKey();
-					var answer = match.get().getValue();
-
-					if (!answerName.equals(query.name())) // contextualize if necessary
-						answers.add(DNSAnswer.of(repository.getAllByNameAndType(query.name(), CNameRecord.ID).getFirst()));
-					answers.add(DNSAnswer.of(answer));
 				} catch (Exception e) {
 					logger.error("Error while processing query", e);
 				}
@@ -103,6 +86,8 @@ public class DNSServer implements AutoCloseable {
 				logger.info("Truncating: " + response.needsTruncation());
 				logger.info("Response: " + response);
 				logger.info("Answers: " + answers);
+				logger.info("Authorities: " + authorities);
+				logger.info("Additional: " + additional);
 				logger.info("Sending response to " + clientAddress);
 
 				channel.send(responseSegment.asByteBuffer(), clientAddress);

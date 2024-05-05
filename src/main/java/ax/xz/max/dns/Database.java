@@ -47,6 +47,10 @@ public class Database {
 		for (var record : controller.getAllByType(ARecord.ID))
 			System.out.println(record);
 
+		System.out.println("\ntrying to resolve www.example.org:");
+		for (var match : controller.getAllChainsByNameAndType(new DomainName("www.example.org"), ARecord.ID))
+			System.out.println(match.aliasRecord() + " -> " + match.record());
+
 		System.out.println("\ndeleting all by type:");
 		for (var record : controller.deleteAllByType(ARecord.ID))
 			System.out.println(record);
