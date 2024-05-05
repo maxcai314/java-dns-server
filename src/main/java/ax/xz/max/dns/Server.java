@@ -31,16 +31,16 @@ public class Server {
 				new DomainName("testing.xz.ax")
 		);
 
-		var subdomain = new CNameRecord(
-				new DomainName("subdomain.testing.xz.ax"),
+		var ns = new NSRecord(
+				new DomainName("testing.xz.ax"),
 				10,
-				new DomainName("testing.xz.ax")
+				new DomainName("ns.xz.ax")
 		);
 
 		controller.insert(com);
 		controller.insert(com6);
 		controller.insert(www);
-		controller.insert(subdomain);
+		controller.insert(ns);
 
 		try (var server = new DNSServer(controller)) {
 			System.in.read();
