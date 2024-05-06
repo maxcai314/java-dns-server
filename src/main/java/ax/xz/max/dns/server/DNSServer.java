@@ -10,56 +10,54 @@ import java.lang.foreign.MemorySegment;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
 
 public class DNSServer implements AutoCloseable {
-	private final Logger logger = LoggerFactory.getLogger(DNSServer.class);
-	private final DatagramChannel channel;
+	private final Logger logger;
+	private final Semaphore semaphore;
+	private final DatagramChannel datagramChannel;
+	private final ServerSocketChannel serverSocketChannel;
 	private final ExecutorService executor;
 	private final ResourceRepository repository;
 
 	public DNSServer(ResourceRepository repository) throws IOException {
-		this(repository, Thread.ofVirtual().factory());
+		this(repository, Thread.ofVirtual().factory(), 10);
 	}
 
-	public DNSServer(ResourceRepository repository, ThreadFactory factory) throws IOException {
-		channel = DatagramChannel.open().bind(new InetSocketAddress(53));
+	public DNSServer(ResourceRepository repository, ThreadFactory threadFactory, int allowedConcurrentLookups) throws IOException {
 		this.repository = repository;
-		executor = Executors.newSingleThreadExecutor(factory);
-		executor.submit(this::run);
+		this.logger = LoggerFactory.getLogger(DNSServer.class);
+		this.semaphore = new Semaphore(allowedConcurrentLookups);
+
+		this.datagramChannel = DatagramChannel.open().bind(new InetSocketAddress(53));
+		this.serverSocketChannel = ServerSocketChannel.open().bind(new InetSocketAddress(53));
+		this.executor = Executors.newThreadPerTaskExecutor(threadFactory);
+
+		executor.submit(this::runDatagramServer);
+		executor.submit(this::runSocketServer);
 	}
 
 	@Override
 	public void close() throws IOException {
 		executor.shutdownNow();
-		channel.close();
+		datagramChannel.close();
 	}
-	
-	private void run() {
-		logger.info("Server started");
-		ByteBuffer buffer = ByteBuffer.allocate(65535);
 
-		while (!Thread.interrupted()) {
-			try {
-				var clientAddress = channel.receive(buffer);
-				buffer.flip();
-				var segment = MemorySegment.ofBuffer(buffer);
+	private DNSMessage responseFor(DNSMessage request) throws InterruptedException {
+		semaphore.acquire();
+		try {
+			LinkedList<DNSAnswer> answers = new LinkedList<>();
+			LinkedList<DNSAnswer> authorities = new LinkedList<>();
+			LinkedList<DNSAnswer> additional = new LinkedList<>();
 
-				var request = DNSMessage.parseMessage(segment);
-
-				logger.info("\nReceived request: from " + clientAddress);
-				logger.info("Header: " + request.header());
-				logger.info("Queries: " + request.queries());
-
-				LinkedList<DNSAnswer> answers = new LinkedList<>();
-				LinkedList<DNSAnswer> authorities = new LinkedList<>();
-				LinkedList<DNSAnswer> additional = new LinkedList<>();
-
-				for (var query : request.queries()) try {
+			for (var query : request.queries())
+				try {
 					var match = repository.getAllByNameAndType(query.name(), query.type()).stream().findAny();
 					match.map(DNSAnswer::of).ifPresent(answers::add);
 
@@ -73,24 +71,48 @@ public class DNSServer implements AutoCloseable {
 					}
 				} catch (Exception e) {
 					logger.error("Error while processing query", e);
+					// todo: return a server failure response DNSMessage.error(request.header());
 				}
 
-				var header = request.header().asMinimalAnswer(
-						(short) answers.size(),
-						(short) authorities.size(),
-						(short) additional.size()
-				);
-				var response = new DNSMessage(header, request.queries(), answers, authorities, additional);
+			var header = request.header().asMinimalAnswer(
+					(short) answers.size(),
+					(short) authorities.size(),
+					(short) additional.size()
+			);
+
+			return new DNSMessage(header, request.queries(), answers, authorities, additional);
+		} finally {
+			semaphore.release();
+		}
+	}
+	
+	private void runDatagramServer() {
+		logger.info("UDP Server started");
+		ByteBuffer buffer = ByteBuffer.allocate(65535);
+
+		while (!Thread.interrupted()) {
+			try {
+				var clientAddress = datagramChannel.receive(buffer);
+				buffer.flip();
+				var segment = MemorySegment.ofBuffer(buffer);
+
+				var request = DNSMessage.parseMessage(segment);
+
+				logger.info("Received request from " + clientAddress);
+				logger.info("Header: " + request.header());
+				logger.info("Queries: " + request.queries());
+
+				var response = responseFor(request);
 				var responseSegment = response.toTruncatedMemorySegment(); // via UDP
 
 				logger.info("Truncating: " + response.needsTruncation());
 				logger.info("Response: " + response);
-				logger.info("Answers: " + answers);
-				logger.info("Authorities: " + authorities);
-				logger.info("Additional: " + additional);
+				logger.info("Answers: " + response.answers());
+				logger.info("Authorities: " + response.authorities());
+				logger.info("Additional: " + response.additional());
 				logger.info("Sending response to " + clientAddress);
 
-				channel.send(responseSegment.asByteBuffer(), clientAddress);
+				datagramChannel.send(responseSegment.asByteBuffer(), clientAddress);
 			} catch (Exception e) {
 				logger.error("Error while processing request", e);
 			} finally {
@@ -98,5 +120,61 @@ public class DNSServer implements AutoCloseable {
 			}
 		}
 		logger.info("Server stopped");
+	}
+
+	private void runSocketServer() {
+		logger.info("TCP Server Socket Channel");
+
+		while (!Thread.interrupted()) {
+			try {
+				var clientChannel = serverSocketChannel.accept();
+				logger.info("TCP Connection accepted: " + clientChannel);
+				executor.submit(() -> handleSocketConnection(clientChannel));
+			} catch (Exception e) {
+				logger.error("Error while accepting TCP connection", e);
+			}
+		}
+		logger.info("TCP Server Socket Channel stopped");
+	}
+
+	private void handleSocketConnection(SocketChannel clientChannel) {
+		try (clientChannel) {
+			while (!Thread.interrupted()) {
+				ByteBuffer lengthBuffer = ByteBuffer.allocate(2);
+
+				while (lengthBuffer.hasRemaining())
+					clientChannel.read(lengthBuffer); // read 2 bytes for message length
+				lengthBuffer.flip();
+				int length = lengthBuffer.getShort();
+
+				logger.info("TCP Message length: " + length + " bytes");
+
+				ByteBuffer buffer = ByteBuffer.allocate(length);
+
+				while (buffer.hasRemaining())
+					clientChannel.read(buffer);
+				buffer.flip();
+				var segment = MemorySegment.ofBuffer(buffer);
+
+				var request = DNSMessage.parseMessage(segment);
+
+				logger.info("Received TCP request from " + clientChannel);
+				logger.info("Header: " + request.header());
+				logger.info("Queries: " + request.queries());
+
+				var response = responseFor(request);
+				var responseSegment = response.toMemorySegment(); // via TCP
+
+				logger.info("Response: " + response);
+				logger.info("Answers: " + response.answers());
+				logger.info("Authorities: " + response.authorities());
+				logger.info("Additional: " + response.additional());
+				logger.info("Sending response to " + clientChannel);
+
+				clientChannel.write(responseSegment.asByteBuffer());
+			}
+		} catch (Exception e) {
+			logger.error("Error while processing request", e);
+		}
 	}
 }
