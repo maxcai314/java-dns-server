@@ -47,6 +47,7 @@ public class DNSServer implements AutoCloseable {
 	public void close() throws IOException {
 		executor.shutdownNow();
 		datagramChannel.close();
+		serverSocketChannel.close();
 	}
 
 	private DNSMessage responseFor(DNSMessage request) throws InterruptedException {
