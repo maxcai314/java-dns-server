@@ -13,6 +13,6 @@ public record NSRecord(DomainName name, int timeToLive, DomainName nameserver) i
 	}
 
 	public static NSRecord fromData(DomainName name, int timeToLive, MemorySegment data) {
-		return new NSRecord(name, timeToLive, DomainName.fromData(data));
+		return new NSRecord(name, timeToLive, DomainName.fromData(data).domainName());
 	}
 }

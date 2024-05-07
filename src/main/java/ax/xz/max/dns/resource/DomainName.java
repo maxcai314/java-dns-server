@@ -45,25 +45,64 @@ public record DomainName(String name) {
 		slice.set(NETWORK_BYTE, offset, (byte) 0); // technically unnecessary; null-terminated
 	}
 
-	public static DomainName fromData(MemorySegment data) {
+	/**
+	 * Represents a parsed domain name.
+	 * <p>
+	 * When parsing a domain name with pointers,
+	 * the number of bytes parsed is not necessarily equal to
+	 * the length of the data represented.
+	 */
+	public record ParsedDomainName(DomainName domainName, int bytesParsed) {}
+
+	/**
+	 * Does not support compression pointers.
+	 */
+	public static ParsedDomainName fromData(MemorySegment data) {
+		return fromData(data, MemorySegment.NULL);
+	}
+
+	/**
+	 * Supports compression pointers, referencing the context.
+	 * Protects against infinite loops by delegating to a depth-limited helper.
+	 */
+	public static ParsedDomainName fromData(MemorySegment data, MemorySegment context) {
+		return fromData0(data, context, 0);
+	}
+
+	/**
+	 * Supports compression pointers, referencing the context.
+	 * Protects against infinite loops.
+	 */
+	private static ParsedDomainName fromData0(MemorySegment data, MemorySegment context, int depth) {
+		if (depth > 10) throw new IllegalArgumentException("Too many compression pointers- possible infinite loop");
 		StringBuilder builder = new StringBuilder();
-		int remaining = data.get(NETWORK_BYTE, 0);
-		int index = 1;
+
+		int nextIndex = 0; // always points to the next byte to read
+		int remaining = Byte.toUnsignedInt(data.get(NETWORK_BYTE, nextIndex++));
 		while (true) {
-			builder.append((char) data.get(NETWORK_BYTE, index));
-			index++;
+			if ((remaining & 0b1100_0000) != 0) {
+				// compression pointer
+				int pointer = ((remaining & 0b0011_1111) << 8) | data.get(NETWORK_BYTE, nextIndex++);
+				MemorySegment pointerData = context.asSlice(pointer);
+				DomainName pointerName = fromData0(pointerData, context, depth + 1).domainName();
+				builder.append(pointerName.name);
+				break;
+			}
+			if (remaining > 63)
+				throw new IllegalArgumentException("Label too long: " + remaining);
+
+			builder.append((char) data.get(NETWORK_BYTE, nextIndex++));
 			remaining--;
 			if (remaining == 0) {
-				byte nextByte = data.get(NETWORK_BYTE, index);
+				byte nextByte = data.get(NETWORK_BYTE, nextIndex++);
 				if (nextByte == 0) break;
 				builder.append('.');
-				remaining = nextByte;
-				index++;
+				remaining = Byte.toUnsignedInt(nextByte);
 			}
 
-			if (index >= data.byteSize()) throw new IllegalArgumentException("Failed to parse data");
+			if (nextIndex >= data.byteSize()) throw new IllegalArgumentException("Failed to parse data");
 		}
-		return new DomainName(builder.toString());
+		return new ParsedDomainName(new DomainName(builder.toString()), nextIndex);
 	}
 
 	public byte[] bytes() {

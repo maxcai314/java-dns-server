@@ -13,6 +13,6 @@ public record CNameRecord(DomainName name, int timeToLive, DomainName alias) imp
 	}
 
 	public static CNameRecord fromData(DomainName name, int timeToLive, MemorySegment data) {
-		return new CNameRecord(name, timeToLive, DomainName.fromData(data));
+		return new CNameRecord(name, timeToLive, DomainName.fromData(data).domainName());
 	}
 }

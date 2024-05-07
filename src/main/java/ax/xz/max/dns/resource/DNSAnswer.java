@@ -44,7 +44,7 @@ public record DNSAnswer(MemorySegment data) {
 	 * Parses a DNS answer from the start of a memory segment.
 	 */
 	public static DNSAnswer parseFrom(MemorySegment slice) {
-		DomainName name = DomainName.fromData(slice);
+		DomainName name = DomainName.fromData(slice).domainName();
 		MemorySegment trailer = slice.asSlice(name.byteSize());
 		short dataLength = trailer.get(NETWORK_SHORT, name.byteSize() + 8);
 		MemorySegment data = slice.asSlice(0, name.byteSize() + 10 + dataLength);

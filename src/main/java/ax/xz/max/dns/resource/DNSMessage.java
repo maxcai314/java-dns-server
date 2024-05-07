@@ -19,6 +19,9 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<DNSAnswe
 		additional = List.copyOf(additional);
 	}
 
+	/**
+	 * Parses the queries of a DNS message.
+	 */
 	public static DNSMessage parseMessage(MemorySegment data) {
 		var header = DNSHeader.fromData(data);
 		var querySegment = data.asSlice(header.byteSize());
@@ -28,8 +31,8 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<DNSAnswe
 
 		for (int i = 0; i < header.numQuestions(); i++) {
 			var query = DNSQuery.fromData(querySegment.asSlice(queryOffset));
-			queryOffset += query.byteSize();
-			queries.add(query);
+			queryOffset += query.bytesParsed();
+			queries.add(query.query());
 		}
 
 //		if (!header.isResponse()) {

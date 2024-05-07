@@ -74,7 +74,7 @@ public class SQLResourceRepository implements ResourceRepository {
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
-						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))),
+						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
 						resultSet.getShort("type"),
 						resultSet.getInt("time_to_live"),
 						MemorySegment.ofArray(resultSet.getBytes("data"))
@@ -150,7 +150,7 @@ public class SQLResourceRepository implements ResourceRepository {
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
-						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))),
+						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
 						type,
 						resultSet.getInt("time_to_live"),
 						MemorySegment.ofArray(resultSet.getBytes("data"))
@@ -175,7 +175,7 @@ public class SQLResourceRepository implements ResourceRepository {
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
-						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))),
+						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
 						type,
 						resultSet.getInt("time_to_live"),
 						MemorySegment.ofArray(resultSet.getBytes("data"))
@@ -198,7 +198,7 @@ public class SQLResourceRepository implements ResourceRepository {
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
-						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))),
+						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
 						resultSet.getShort("type"),
 						resultSet.getInt("time_to_live"),
 						MemorySegment.ofArray(resultSet.getBytes("data"))
@@ -280,7 +280,7 @@ public class SQLResourceRepository implements ResourceRepository {
 
 			while (resultSet.next()) {
 				ResourceRecord record = ResourceRecord.fromData(
-						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))),
+						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
 						type,
 						resultSet.getInt("time_to_live"),
 						MemorySegment.ofArray(resultSet.getBytes("data"))

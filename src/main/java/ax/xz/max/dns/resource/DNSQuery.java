@@ -10,14 +10,23 @@ import static java.nio.ByteOrder.BIG_ENDIAN;
  * Represents a DNS query. Each request contains {@link DNSHeader#numQuestions()} queries.
  */
 public record DNSQuery(DomainName name, short type, short classID) {
+	public record ParsedDNSQuery(DNSQuery query, int bytesParsed) {}
 	private static final ValueLayout.OfShort NETWORK_SHORT = JAVA_SHORT.withByteAlignment(1).withOrder(BIG_ENDIAN);
 
-	public static DNSQuery fromData(MemorySegment data) {
-		DomainName name = DomainName.fromData(data);
-		var trailer = data.asSlice(name.byteSize(), 4);
+	public static ParsedDNSQuery fromData(MemorySegment data) {
+		var name = DomainName.fromData(data);
+		var trailer = data.asSlice(name.bytesParsed(), 4);
 		short type = trailer.get(NETWORK_SHORT, 0);
 		short classID = trailer.get(NETWORK_SHORT, 2);
-		return new DNSQuery(name, type, classID);
+		return new ParsedDNSQuery(new DNSQuery(name.domainName(), type, classID), name.bytesParsed() + 4);
+	}
+
+	public static ParsedDNSQuery fromData(MemorySegment data, MemorySegment context) {
+		var name = DomainName.fromData(data, context);
+		var trailer = data.asSlice(name.bytesParsed(), 4);
+		short type = trailer.get(NETWORK_SHORT, 0);
+		short classID = trailer.get(NETWORK_SHORT, 2);
+		return new ParsedDNSQuery(new DNSQuery(name.domainName(), type, classID), name.bytesParsed() + 4);
 	}
 
 	public int byteSize() {
