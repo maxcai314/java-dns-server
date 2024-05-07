@@ -82,7 +82,7 @@ public record DNSHeader(
 				false,
 				false,
 				false,
-				(byte) 0,
+				(byte) 0, // no error
 				numQuestions,
 				numAnswered, // answer each question
 				numAuthority,
@@ -97,6 +97,23 @@ public record DNSHeader(
 				opcode,
 				isAuthoritative,
 				true,
+				recursionDesired,
+				recursionAvailable,
+				responseCode,
+				numQuestions,
+				numAnswers,
+				numNS,
+				numAdditional
+		);
+	}
+
+	public DNSHeader asErrorResponse() {
+		return new DNSHeader(
+				id,
+				true,
+				(byte) 2, // server failure
+				isAuthoritative,
+				isTruncated,
 				recursionDesired,
 				recursionAvailable,
 				responseCode,

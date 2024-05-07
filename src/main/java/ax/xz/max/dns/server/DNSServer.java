@@ -71,7 +71,8 @@ public class DNSServer implements AutoCloseable {
 					}
 				} catch (Exception e) {
 					logger.error("Error while processing query", e);
-					// todo: return a server failure response DNSMessage.error(request.header());
+					logger.info("Returning a server failure response");
+					return request.asErrorResponse();
 				}
 
 			var header = request.header().asMinimalAnswer(
@@ -98,7 +99,7 @@ public class DNSServer implements AutoCloseable {
 
 				var request = DNSMessage.parseMessage(segment);
 
-				logger.info("Received request from " + clientAddress);
+				logger.info("Received UDP request from " + clientAddress);
 				logger.info("Header: " + request.header());
 				logger.info("Queries: " + request.queries());
 
@@ -128,7 +129,7 @@ public class DNSServer implements AutoCloseable {
 		while (!Thread.interrupted()) {
 			try {
 				var clientChannel = serverSocketChannel.accept();
-				logger.info("TCP Connection accepted: " + clientChannel);
+				logger.info("TCP connection accepted from " + clientChannel.getRemoteAddress());
 				executor.submit(() -> handleSocketConnection(clientChannel));
 			} catch (Exception e) {
 				logger.error("Error while accepting TCP connection", e);
@@ -158,7 +159,7 @@ public class DNSServer implements AutoCloseable {
 
 				var request = DNSMessage.parseMessage(segment);
 
-				logger.info("Received TCP request from " + clientChannel);
+				logger.info("Received TCP request from " + clientChannel.getRemoteAddress());
 				logger.info("Header: " + request.header());
 				logger.info("Queries: " + request.queries());
 
@@ -169,7 +170,7 @@ public class DNSServer implements AutoCloseable {
 				logger.info("Answers: " + response.answers());
 				logger.info("Authorities: " + response.authorities());
 				logger.info("Additional: " + response.additional());
-				logger.info("Sending response to " + clientChannel);
+				logger.info("Sending response to " + clientChannel.getRemoteAddress());
 
 				clientChannel.write(responseSegment.asByteBuffer());
 			}

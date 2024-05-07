@@ -111,4 +111,9 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<DNSAnswe
 
 		return segment;
 	}
+
+	public DNSMessage asErrorResponse() {
+		var header = header().asErrorResponse();
+		return new DNSMessage(header, queries, List.of(), List.of(), List.of());
+	}
 }
