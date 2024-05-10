@@ -1,7 +1,7 @@
 package ax.xz.max.dns.resource;
 
 import java.lang.foreign.MemorySegment;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
 public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<ResourceRecord> answers, List<ResourceRecord> authorities, List<ResourceRecord> additional) {
@@ -27,7 +27,7 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<Resource
 		var querySegment = data.asSlice(header.byteSize());
 		int queryOffset = 0;
 
-		LinkedList<DNSQuery> queries = new LinkedList<>();
+		ArrayList<DNSQuery> queries = new ArrayList<>(header.numQuestions());
 
 		for (int i = 0; i < header.numQuestions(); i++) {
 			var query = DNSQuery.fromData(querySegment.asSlice(queryOffset));

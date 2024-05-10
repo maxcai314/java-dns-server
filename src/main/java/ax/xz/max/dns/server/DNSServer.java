@@ -14,7 +14,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -22,20 +22,18 @@ import java.util.concurrent.ThreadFactory;
 
 public class DNSServer implements AutoCloseable {
 	private final Logger logger;
-	private final Semaphore semaphore;
 	private final DatagramChannel datagramChannel;
 	private final ServerSocketChannel serverSocketChannel;
 	private final ExecutorService executor;
 	private final ResourceRepository repository;
 
 	public DNSServer(ResourceRepository repository) throws IOException {
-		this(repository, Thread.ofVirtual().factory(), 10);
+		this(repository, Thread.ofVirtual().factory());
 	}
 
-	public DNSServer(ResourceRepository repository, ThreadFactory threadFactory, int allowedConcurrentLookups) throws IOException {
+	public DNSServer(ResourceRepository repository, ThreadFactory threadFactory) throws IOException {
 		this.repository = repository;
 		this.logger = LoggerFactory.getLogger(DNSServer.class);
-		this.semaphore = new Semaphore(allowedConcurrentLookups);
 
 		this.datagramChannel = DatagramChannel.open().bind(new InetSocketAddress(53));
 		this.serverSocketChannel = ServerSocketChannel.open().bind(new InetSocketAddress(53));
@@ -52,45 +50,41 @@ public class DNSServer implements AutoCloseable {
 		serverSocketChannel.close();
 	}
 
-	private DNSMessage responseFor(DNSMessage request) throws InterruptedException {
+	private DNSMessage responseFor(DNSMessage request) {
 		Instant start = Instant.now();
-		semaphore.acquire();
-		try {
-			logger.info("Waited for semaphore for " + Duration.between(start, Instant.now()));
-			LinkedList<ResourceRecord> answers = new LinkedList<>();
-			LinkedList<ResourceRecord> authorities = new LinkedList<>();
-			LinkedList<ResourceRecord> additional = new LinkedList<>();
 
-			for (var query : request.queries())
-				try {
-					var match = repository.getAllByNameAndType(query.name(), query.type());
-					answers.addAll(match);
+		ArrayList<ResourceRecord> answers = new ArrayList<>();
+		ArrayList<ResourceRecord> authorities = new ArrayList<>();
+		ArrayList<ResourceRecord> additional = new ArrayList<>();
 
-					if (query.type() != CNameRecord.ID && match.isEmpty()) {
-						// check if any of the names give CNAME chains
-						var cNameMatch = repository.getAllChainsByNameAndType(query.name(), query.type());
-						for (var chain : cNameMatch) {
-							answers.add(chain.record());
-							answers.add(chain.aliasRecord());
-						}
+		for (var query : request.queries())
+			try {
+				var match = repository.getAllByNameAndType(query.name(), query.type());
+				answers.addAll(match);
+
+				if (query.type() != CNameRecord.ID && match.isEmpty()) {
+					// check if any of the names give CNAME chains
+					var cNameMatch = repository.getAllChainsByNameAndType(query.name(), query.type());
+					for (var chain : cNameMatch) {
+						answers.add(chain.record());
+						answers.add(chain.aliasRecord());
 					}
-				} catch (Exception e) {
-					logger.error("Error while processing query", e);
-					logger.info("Returning a server failure response");
-					return request.asErrorResponse();
 				}
+			} catch (Exception e) {
+				logger.error("Error while processing query", e);
+				logger.info("Returning a server failure response");
+				return request.asErrorResponse();
+			}
 
-			var header = request.header().asMinimalAnswer(
-					(short) answers.size(),
-					(short) authorities.size(),
-					(short) additional.size()
-			);
+		var header = request.header().asMinimalAnswer(
+				(short) answers.size(),
+				(short) authorities.size(),
+				(short) additional.size()
+		);
 
-			return new DNSMessage(header, request.queries(), answers, authorities, additional);
-		} finally {
-			semaphore.release();
-			logger.info("Search took " + Duration.between(start, Instant.now()));
-		}
+		logger.info("Search took " + Duration.between(start, Instant.now()));
+
+		return new DNSMessage(header, request.queries(), answers, authorities, additional);
 	}
 	
 	private void runDatagramServer() {

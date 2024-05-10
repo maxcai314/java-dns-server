@@ -5,8 +5,8 @@ import org.sqlite.SQLiteDataSource;
 
 import java.lang.foreign.MemorySegment;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.LinkedList;
 
 public class SQLResourceRepository implements ResourceRepository {
 	private final SQLiteDataSource dataSource;
@@ -70,7 +70,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setBytes(4, record.recordData().asByteBuffer().array());
 			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new ArrayList<>();
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
@@ -95,7 +95,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setBytes(1, name.bytes());
 			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new ArrayList<>();
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
@@ -121,7 +121,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setShort(2, type);
 			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new ArrayList<>();
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
@@ -146,7 +146,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setShort(1, type);
 			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new ArrayList<>();
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
@@ -171,7 +171,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setShort(1, type);
 			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new ArrayList<>();
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
@@ -194,7 +194,7 @@ public class SQLResourceRepository implements ResourceRepository {
 				Statement statement = connection.createStatement();
 				ResultSet resultSet = statement.executeQuery("SELECT * FROM records");
 		) {
-			List<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new ArrayList<>();
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
@@ -219,7 +219,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setBytes(1, name.bytes());
 			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new ArrayList<>();
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
@@ -245,7 +245,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setShort(2, type);
 			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new LinkedList<>();
+			List<ResourceRecord> records = new ArrayList<>();
 
 			while (resultSet.next())
 				records.add(ResourceRecord.fromData(
@@ -276,7 +276,7 @@ public class SQLResourceRepository implements ResourceRepository {
 
 			ResultSet resultSet = statement.executeQuery();
 
-			List<AliasChain> chains = new LinkedList<>();
+			List<AliasChain> chains = new ArrayList<>();
 
 			while (resultSet.next()) {
 				ResourceRecord record = ResourceRecord.fromData(
