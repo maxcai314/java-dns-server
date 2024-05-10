@@ -12,6 +12,11 @@ public record CNameRecord(DomainName name, int timeToLive, DomainName alias) imp
 		return segment;
 	}
 
+	@Override
+	public int dataLength() {
+		return alias.byteSize();
+	}
+
 	public static CNameRecord fromData(DomainName name, int timeToLive, MemorySegment data) {
 		return new CNameRecord(name, timeToLive, DomainName.fromData(data).domainName());
 	}

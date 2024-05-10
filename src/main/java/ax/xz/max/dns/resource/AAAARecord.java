@@ -16,6 +16,11 @@ public record AAAARecord(DomainName name, int timeToLive, Inet6Address address) 
 		return MemorySegment.ofArray(address.getAddress());
 	}
 
+	@Override
+	public int dataLength() {
+		return 16;
+	}
+
 	private static final ValueLayout.OfByte NETWORK_BYTE = JAVA_BYTE.withByteAlignment(1).withOrder(BIG_ENDIAN);
 
 	public static AAAARecord fromData(DomainName name, int timeToLive, MemorySegment data) {

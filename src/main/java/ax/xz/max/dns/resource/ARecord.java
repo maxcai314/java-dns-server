@@ -16,6 +16,11 @@ public record ARecord(DomainName name, int timeToLive, Inet4Address address) imp
 		return MemorySegment.ofArray(address.getAddress());
 	}
 
+	@Override
+	public int dataLength() {
+		return 4;
+	}
+
 	private static final ValueLayout.OfByte NETWORK_BYTE = JAVA_BYTE.withByteAlignment(1).withOrder(BIG_ENDIAN);
 
 	public static ARecord fromData(DomainName name, int timeToLive, MemorySegment data) {

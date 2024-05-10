@@ -4,7 +4,7 @@ import java.lang.foreign.MemorySegment;
 import java.util.LinkedList;
 import java.util.List;
 
-public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<DNSAnswer> answers, List<DNSAnswer> authorities, List<DNSAnswer> additional) {
+public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<ResourceRecord> answers, List<ResourceRecord> authorities, List<ResourceRecord> additional) {
 	public DNSMessage {
 		if (header.numQuestions() != queries.size())
 			throw new IllegalArgumentException("Number of questions does not match number of queries");
@@ -35,6 +35,7 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<DNSAnswe
 			queries.add(query.query());
 		}
 
+		// todo: parse these
 //		if (!header.isResponse()) {
 //			if (header.numAnswers() != 0)
 //				throw new IllegalArgumentException("Query cannot contain answers");
@@ -50,9 +51,9 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<DNSAnswe
 	public int byteSize() {
 		return header.byteSize()
 				+ queries.stream().mapToInt(DNSQuery::byteSize).sum()
-				+ answers.stream().mapToInt(DNSAnswer::byteSize).sum()
-				+ authorities.stream().mapToInt(DNSAnswer::byteSize).sum()
-				+ additional.stream().mapToInt(DNSAnswer::byteSize).sum();
+				+ answers.stream().mapToInt(ResourceRecord::byteSize).sum()
+				+ authorities.stream().mapToInt(ResourceRecord::byteSize).sum()
+				+ additional.stream().mapToInt(ResourceRecord::byteSize).sum();
 	}
 
 	public boolean needsTruncation() {
@@ -62,26 +63,9 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<DNSAnswe
 	public MemorySegment toTruncatedMemorySegment() {
 		var header = needsTruncation() ? this.header.asTruncated() : this.header;
 
-		MemorySegment segment = MemorySegment.ofArray(new byte[byteSize()]);
-		header.apply(segment);
-		int offset = header.byteSize();
+		MemorySegment segment = toMemorySegment();
 
-		for (var query : queries) {
-			query.apply(segment.asSlice(offset));
-			offset += query.byteSize();
-		}
-		for (var answer : answers) {
-			answer.apply(segment.asSlice(offset));
-			offset += answer.byteSize();
-		}
-		for (var authority : authorities) {
-			authority.apply(segment.asSlice(offset));
-			offset += authority.byteSize();
-		}
-		for (var additional : additional) {
-			additional.apply(segment.asSlice(offset));
-			offset += additional.byteSize();
-		}
+		header.apply(segment); // apply the header again
 
 		if (needsTruncation()) return segment.asSlice(0, 512);
 		else return segment;

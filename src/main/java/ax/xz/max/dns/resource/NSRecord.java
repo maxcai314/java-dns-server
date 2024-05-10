@@ -12,6 +12,11 @@ public record NSRecord(DomainName name, int timeToLive, DomainName nameserver) i
 		return segment;
 	}
 
+	@Override
+	public int dataLength() {
+		return nameserver.byteSize();
+	}
+
 	public static NSRecord fromData(DomainName name, int timeToLive, MemorySegment data) {
 		return new NSRecord(name, timeToLive, DomainName.fromData(data).domainName());
 	}

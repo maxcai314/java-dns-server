@@ -12,6 +12,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -51,23 +53,25 @@ public class DNSServer implements AutoCloseable {
 	}
 
 	private DNSMessage responseFor(DNSMessage request) throws InterruptedException {
+		Instant start = Instant.now();
 		semaphore.acquire();
 		try {
-			LinkedList<DNSAnswer> answers = new LinkedList<>();
-			LinkedList<DNSAnswer> authorities = new LinkedList<>();
-			LinkedList<DNSAnswer> additional = new LinkedList<>();
+			logger.info("Waited for semaphore for " + Duration.between(start, Instant.now()));
+			LinkedList<ResourceRecord> answers = new LinkedList<>();
+			LinkedList<ResourceRecord> authorities = new LinkedList<>();
+			LinkedList<ResourceRecord> additional = new LinkedList<>();
 
 			for (var query : request.queries())
 				try {
-					var match = repository.getAllByNameAndType(query.name(), query.type()).stream().findAny();
-					match.map(DNSAnswer::of).ifPresent(answers::add);
+					var match = repository.getAllByNameAndType(query.name(), query.type());
+					answers.addAll(match);
 
 					if (query.type() != CNameRecord.ID && match.isEmpty()) {
 						// check if any of the names give CNAME chains
-						var cNameMatch = repository.getAllChainsByNameAndType(query.name(), query.type()).stream().findAny();
-						if (cNameMatch.isPresent()) {
-							answers.add(DNSAnswer.of(cNameMatch.get().record()));
-							answers.add(DNSAnswer.of(cNameMatch.get().aliasRecord()));
+						var cNameMatch = repository.getAllChainsByNameAndType(query.name(), query.type());
+						for (var chain : cNameMatch) {
+							answers.add(chain.record());
+							answers.add(chain.aliasRecord());
 						}
 					}
 				} catch (Exception e) {
@@ -85,6 +89,7 @@ public class DNSServer implements AutoCloseable {
 			return new DNSMessage(header, request.queries(), answers, authorities, additional);
 		} finally {
 			semaphore.release();
+			logger.info("Search took " + Duration.between(start, Instant.now()));
 		}
 	}
 	
@@ -95,6 +100,7 @@ public class DNSServer implements AutoCloseable {
 		while (!Thread.interrupted()) {
 			try {
 				var clientAddress = datagramChannel.receive(buffer);
+				Instant start = Instant.now();
 				buffer.flip();
 				var segment = MemorySegment.ofBuffer(buffer);
 
@@ -115,6 +121,7 @@ public class DNSServer implements AutoCloseable {
 				logger.info("Sending response to " + clientAddress);
 
 				datagramChannel.send(responseSegment.asByteBuffer(), clientAddress);
+				logger.info("UDP Response took " + Duration.between(start, Instant.now()));
 			} catch (Exception e) {
 				logger.error("Error while processing request", e);
 			} finally {
@@ -142,6 +149,7 @@ public class DNSServer implements AutoCloseable {
 	private void handleSocketConnection(SocketChannel clientChannel) {
 		try (clientChannel) {
 			while (!Thread.interrupted()) {
+				Instant start = Instant.now();
 				ByteBuffer lengthBuffer = ByteBuffer.allocate(2);
 
 				while (lengthBuffer.hasRemaining())
@@ -174,6 +182,7 @@ public class DNSServer implements AutoCloseable {
 				logger.info("Sending response to " + clientChannel.getRemoteAddress());
 
 				clientChannel.write(responseSegment.asByteBuffer());
+				logger.info("TCP Response took " + Duration.between(start, Instant.now()));
 			}
 		} catch (Exception e) {
 			logger.error("Error while processing request", e);
