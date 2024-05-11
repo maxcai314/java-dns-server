@@ -72,19 +72,20 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setShort(2, record.type());
 			statement.setInt(3, record.timeToLive());
 			statement.setBytes(4, record.recordData().asByteBuffer().array());
-			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new ArrayList<>();
+			try (ResultSet resultSet = statement.executeQuery()) {
+				List<ResourceRecord> records = new ArrayList<>();
 
-			while (resultSet.next())
-				records.add(ResourceRecord.fromData(
-						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
-						resultSet.getShort("type"),
-						resultSet.getInt("time_to_live"),
-						MemorySegment.ofArray(resultSet.getBytes("data"))
-				));
+				while (resultSet.next())
+					records.add(ResourceRecord.fromData(
+							DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
+							resultSet.getShort("type"),
+							resultSet.getInt("time_to_live"),
+							MemorySegment.ofArray(resultSet.getBytes("data"))
+					));
 
-			return records;
+				return records;
+			}
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to delete record", e);
 		}
@@ -97,19 +98,20 @@ public class SQLResourceRepository implements ResourceRepository {
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? RETURNING type, time_to_live, data");
 		) {
 			statement.setBytes(1, name.bytes());
-			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new ArrayList<>();
+			try (ResultSet resultSet = statement.executeQuery()) {
+				List<ResourceRecord> records = new ArrayList<>();
 
-			while (resultSet.next())
-				records.add(ResourceRecord.fromData(
-						name,
-						resultSet.getShort("type"),
-						resultSet.getInt("time_to_live"),
-						MemorySegment.ofArray(resultSet.getBytes("data"))
-				));
+				while (resultSet.next())
+					records.add(ResourceRecord.fromData(
+							name,
+							resultSet.getShort("type"),
+							resultSet.getInt("time_to_live"),
+							MemorySegment.ofArray(resultSet.getBytes("data"))
+					));
 
-			return records;
+				return records;
+			}
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to delete record", e);
 		}
@@ -123,19 +125,20 @@ public class SQLResourceRepository implements ResourceRepository {
 		) {
 			statement.setBytes(1, name.bytes());
 			statement.setShort(2, type);
-			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new ArrayList<>();
+			try (ResultSet resultSet = statement.executeQuery()) {
+				List<ResourceRecord> records = new ArrayList<>();
 
-			while (resultSet.next())
-				records.add(ResourceRecord.fromData(
-						name,
-						type,
-						resultSet.getInt("time_to_live"),
-						MemorySegment.ofArray(resultSet.getBytes("data"))
-				));
+				while (resultSet.next())
+					records.add(ResourceRecord.fromData(
+							name,
+							type,
+							resultSet.getInt("time_to_live"),
+							MemorySegment.ofArray(resultSet.getBytes("data"))
+					));
 
-			return records;
+				return records;
+			}
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to delete record", e);
 		}
@@ -148,19 +151,20 @@ public class SQLResourceRepository implements ResourceRepository {
 				PreparedStatement statement = connection.prepareStatement("SELECT name, time_to_live, data FROM records WHERE type = ?");
 		) {
 			statement.setShort(1, type);
-			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new ArrayList<>();
+			try (ResultSet resultSet = statement.executeQuery()) {
+				List<ResourceRecord> records = new ArrayList<>();
 
-			while (resultSet.next())
-				records.add(ResourceRecord.fromData(
-						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
-						type,
-						resultSet.getInt("time_to_live"),
-						MemorySegment.ofArray(resultSet.getBytes("data"))
-				));
+				while (resultSet.next())
+					records.add(ResourceRecord.fromData(
+							DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
+							type,
+							resultSet.getInt("time_to_live"),
+							MemorySegment.ofArray(resultSet.getBytes("data"))
+					));
 
-			return records;
+				return records;
+			}
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to get all records", e);
 		}
@@ -173,19 +177,20 @@ public class SQLResourceRepository implements ResourceRepository {
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE type = ? RETURNING name, time_to_live, data");
 		) {
 			statement.setShort(1, type);
-			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new ArrayList<>();
+			try (ResultSet resultSet = statement.executeQuery()) {
+				List<ResourceRecord> records = new ArrayList<>();
 
-			while (resultSet.next())
-				records.add(ResourceRecord.fromData(
-						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
-						type,
-						resultSet.getInt("time_to_live"),
-						MemorySegment.ofArray(resultSet.getBytes("data"))
-				));
+				while (resultSet.next())
+					records.add(ResourceRecord.fromData(
+							DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
+							type,
+							resultSet.getInt("time_to_live"),
+							MemorySegment.ofArray(resultSet.getBytes("data"))
+					));
 
-			return records;
+				return records;
+			}
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to delete record", e);
 		}
@@ -221,19 +226,20 @@ public class SQLResourceRepository implements ResourceRepository {
 				PreparedStatement statement = connection.prepareStatement("SELECT type, time_to_live, data FROM records WHERE name = ?");
 		) {
 			statement.setBytes(1, name.bytes());
-			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new ArrayList<>();
+			try (ResultSet resultSet = statement.executeQuery()) {
+				List<ResourceRecord> records = new ArrayList<>();
 
-			while (resultSet.next())
-				records.add(ResourceRecord.fromData(
-						name,
-						resultSet.getShort("type"),
-						resultSet.getInt("time_to_live"),
-						MemorySegment.ofArray(resultSet.getBytes("data"))
-				));
+				while (resultSet.next())
+					records.add(ResourceRecord.fromData(
+							name,
+							resultSet.getShort("type"),
+							resultSet.getInt("time_to_live"),
+							MemorySegment.ofArray(resultSet.getBytes("data"))
+					));
 
-			return records;
+				return records;
+			}
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to get all records", e);
 		}
@@ -247,19 +253,20 @@ public class SQLResourceRepository implements ResourceRepository {
 		) {
 			statement.setBytes(1, name.bytes());
 			statement.setShort(2, type);
-			ResultSet resultSet = statement.executeQuery();
 
-			List<ResourceRecord> records = new ArrayList<>();
+			try (ResultSet resultSet = statement.executeQuery()) {
+				List<ResourceRecord> records = new ArrayList<>();
 
-			while (resultSet.next())
-				records.add(ResourceRecord.fromData(
-						name,
-						type,
-						resultSet.getInt("time_to_live"),
-						MemorySegment.ofArray(resultSet.getBytes("data"))
-				));
+				while (resultSet.next())
+					records.add(ResourceRecord.fromData(
+							name,
+							type,
+							resultSet.getInt("time_to_live"),
+							MemorySegment.ofArray(resultSet.getBytes("data"))
+					));
 
-			return records;
+				return records;
+			}
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to get all records", e);
 		}
@@ -278,28 +285,28 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setShort(2, CNameRecord.ID);
 			statement.setShort(3, type);
 
-			ResultSet resultSet = statement.executeQuery();
+			try (ResultSet resultSet = statement.executeQuery()) {
+				List<AliasChain> chains = new ArrayList<>();
 
-			List<AliasChain> chains = new ArrayList<>();
+				while (resultSet.next()) {
+					ResourceRecord record = ResourceRecord.fromData(
+							DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
+							type,
+							resultSet.getInt("time_to_live"),
+							MemorySegment.ofArray(resultSet.getBytes("data"))
+					);
 
-			while (resultSet.next()) {
-				ResourceRecord record = ResourceRecord.fromData(
-						DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName(),
-						type,
-						resultSet.getInt("time_to_live"),
-						MemorySegment.ofArray(resultSet.getBytes("data"))
-				);
+					CNameRecord context = CNameRecord.fromData(
+							name,
+							resultSet.getInt("candidate_time_to_live"),
+							MemorySegment.ofArray(resultSet.getBytes("name"))
+					);
 
-				CNameRecord context = CNameRecord.fromData(
-						name,
-						resultSet.getInt("candidate_time_to_live"),
-						MemorySegment.ofArray(resultSet.getBytes("name"))
-				);
+					chains.add(new AliasChain(context, record));
+				}
 
-				chains.add(new AliasChain(context, record));
+				return chains;
 			}
-
-			return chains;
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to get records", e);
 		}

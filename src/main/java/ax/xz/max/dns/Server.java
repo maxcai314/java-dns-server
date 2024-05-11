@@ -37,10 +37,24 @@ public class Server {
 					new DomainName("ns.xz.ax")
 			);
 
+			var nsA = new ARecord(
+					new DomainName("ns.xz.ax"),
+					10,
+					Inet4Address.ofLiteral("65.108.126.123")
+			);
+
+			var nsAAAA = new AAAARecord(
+					new DomainName("ns.xz.ax"),
+					10,
+					(Inet6Address) Inet6Address.ofLiteral("2a01:4f9:6b:15ce::2")
+			);
+
 			controller.insert(com);
 			controller.insert(com6);
 			controller.insert(www);
 			controller.insert(ns);
+			controller.insert(nsA);
+			controller.insert(nsAAAA);
 
 			try (var server = new DNSServer(controller)) {
 				System.in.read();
