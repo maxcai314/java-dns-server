@@ -98,24 +98,24 @@ public class DNSServer implements AutoCloseable {
 				var segment = MemorySegment.ofBuffer(buffer);
 
 				var request = DNSMessage.parseMessage(segment);
-				logger.info("Parsing took " + Duration.between(start, Instant.now()));
+//				logger.info("Parsing took " + Duration.between(start, Instant.now()));
 
-				logger.info("Received UDP request from " + clientAddress);
-				logger.info("Header: " + request.header());
-				logger.info("Queries: " + request.queries());
+//				logger.info("Received UDP request from " + clientAddress);
+//				logger.info("Header: " + request.header());
+//				logger.info("Queries: " + request.queries());
 
 				var response = responseFor(request);
 
 				Instant start2 = Instant.now();
 				var responseSegment = response.toTruncatedMemorySegment(); // via UDP
-				logger.info("Serializing took " + Duration.between(start2, Instant.now()));
+//				logger.info("Serializing took " + Duration.between(start2, Instant.now()));
 
-				logger.info("Truncating: " + response.needsTruncation());
-				logger.info("Response: " + response);
-				logger.info("Answers: " + response.answers());
-				logger.info("Authorities: " + response.authorities());
-				logger.info("Additional: " + response.additional());
-				logger.info("Sending response to " + clientAddress);
+//				logger.info("Truncating: " + response.needsTruncation());
+//				logger.info("Response: " + response);
+//				logger.info("Answers: " + response.answers());
+//				logger.info("Authorities: " + response.authorities());
+//				logger.info("Additional: " + response.additional());
+//				logger.info("Sending response to " + clientAddress);
 
 				datagramChannel.send(responseSegment.asByteBuffer(), clientAddress);
 				logger.info("UDP Response took " + Duration.between(start, Instant.now()));
@@ -134,7 +134,7 @@ public class DNSServer implements AutoCloseable {
 		while (!Thread.interrupted()) {
 			try {
 				var clientChannel = serverSocketChannel.accept();
-				logger.info("TCP connection accepted from " + clientChannel.getRemoteAddress());
+//				logger.info("TCP connection accepted from " + clientChannel.getRemoteAddress());
 				executor.submit(() -> handleSocketConnection(clientChannel));
 			} catch (Exception e) {
 				logger.error("Error while accepting TCP connection", e);
@@ -153,7 +153,7 @@ public class DNSServer implements AutoCloseable {
 				lengthBuffer.flip();
 				int length = lengthBuffer.getShort();
 
-				logger.info("TCP Message length: " + length + " bytes");
+//				logger.info("TCP Message length: " + length + " bytes");
 
 				ByteBuffer buffer = ByteBuffer.allocate(length);
 
@@ -166,23 +166,23 @@ public class DNSServer implements AutoCloseable {
 				var segment = MemorySegment.ofBuffer(buffer);
 
 				var request = DNSMessage.parseMessage(segment);
-				logger.info("Parsing took " + Duration.between(start, Instant.now()));
+//				logger.info("Parsing took " + Duration.between(start, Instant.now()));
 
-				logger.info("Received TCP request from " + clientChannel.getRemoteAddress());
-				logger.info("Header: " + request.header());
-				logger.info("Queries: " + request.queries());
+//				logger.info("Received TCP request from " + clientChannel.getRemoteAddress());
+//				logger.info("Header: " + request.header());
+//				logger.info("Queries: " + request.queries());
 
 				var response = responseFor(request);
 
 				Instant start2 = Instant.now();
 				var responseSegment = response.toMemorySegment(); // via TCP
-				logger.info("Serializing took " + Duration.between(start2, Instant.now()));
+//				logger.info("Serializing took " + Duration.between(start2, Instant.now()));
 
-				logger.info("Response: " + response);
-				logger.info("Answers: " + response.answers());
-				logger.info("Authorities: " + response.authorities());
-				logger.info("Additional: " + response.additional());
-				logger.info("Sending response to " + clientChannel.getRemoteAddress());
+//				logger.info("Response: " + response);
+//				logger.info("Answers: " + response.answers());
+//				logger.info("Authorities: " + response.authorities());
+//				logger.info("Additional: " + response.additional());
+//				logger.info("Sending response to " + clientChannel.getRemoteAddress());
 
 				clientChannel.write(responseSegment.asByteBuffer());
 				logger.info("TCP Response took " + Duration.between(start, Instant.now()));

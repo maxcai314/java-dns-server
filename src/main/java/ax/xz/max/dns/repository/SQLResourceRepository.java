@@ -16,7 +16,7 @@ public class SQLResourceRepository implements ResourceRepository {
 	public SQLResourceRepository() throws ResourceAccessException, InterruptedException {
 		dataSource = new SQLiteDataSource();
 		dataSource.setUrl("jdbc:sqlite:records.db");
-		connectionPool = new ConnectionPool(ConnectionFactory.of(dataSource), 10, 15);
+		connectionPool = new ConnectionPool(ConnectionFactory.of(dataSource), 20, 30);
 		initialize();
 	}
 

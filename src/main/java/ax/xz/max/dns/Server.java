@@ -1,5 +1,6 @@
 package ax.xz.max.dns;
 
+import ax.xz.max.dns.repository.CachingResourceRepository;
 import ax.xz.max.dns.repository.SQLResourceRepository;
 import ax.xz.max.dns.resource.*;
 import ax.xz.max.dns.server.DNSServer;
@@ -10,7 +11,7 @@ import java.net.Inet6Address;
 
 public class Server {
 	public static void main(String[] args) throws IOException, InterruptedException {
-		try (SQLResourceRepository controller = new SQLResourceRepository()) {
+		try (CachingResourceRepository controller = CachingResourceRepository.of(new SQLResourceRepository())) {
 			controller.clear();
 
 			var com = new ARecord(
@@ -55,6 +56,8 @@ public class Server {
 			controller.insert(ns);
 			controller.insert(ns4);
 			controller.insert(ns6);
+
+			controller.flushCache();
 
 			try (var server = new DNSServer(controller)) {
 				System.in.read();
