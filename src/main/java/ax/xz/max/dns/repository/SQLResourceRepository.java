@@ -1,5 +1,7 @@
 package ax.xz.max.dns.repository;
 
+import ax.xz.max.dns.repository.connection.ConnectionFactory;
+import ax.xz.max.dns.repository.connection.ConnectionPool;
 import ax.xz.max.dns.resource.*;
 import org.sqlite.SQLiteDataSource;
 
@@ -10,15 +12,17 @@ import java.util.List;
 
 public class SQLResourceRepository implements ResourceRepository {
 	private final SQLiteDataSource dataSource;
-	public SQLResourceRepository() throws ResourceAccessException {
+	private final ConnectionPool connectionPool;
+	public SQLResourceRepository() throws ResourceAccessException, InterruptedException {
 		dataSource = new SQLiteDataSource();
 		dataSource.setUrl("jdbc:sqlite:records.db");
+		connectionPool = new ConnectionPool(ConnectionFactory.of(dataSource), 10, 15);
 		initialize();
 	}
 
-	private void initialize() throws ResourceAccessException {
+	private void initialize() throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				Statement statement = connection.createStatement();
 		) {
 			statement.setQueryTimeout(30);
@@ -29,9 +33,9 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public void clear() throws ResourceAccessException {
+	public void clear() throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				Statement statement = connection.createStatement();
 		) {
 			statement.setQueryTimeout(30);
@@ -43,9 +47,9 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public void insert(ResourceRecord record) throws ResourceAccessException {
+	public void insert(ResourceRecord record) throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				PreparedStatement statement = connection.prepareStatement("INSERT INTO records (name, type, time_to_live, data) VALUES (?, ?, ?, ?)");
 		) {
 			statement.setBytes(1, record.name().bytes());
@@ -59,9 +63,9 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public List<ResourceRecord> delete(ResourceRecord record) throws ResourceAccessException {
+	public List<ResourceRecord> delete(ResourceRecord record) throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND type = ? AND time_to_live = ? AND data = ? RETURNING *");
 		) {
 			statement.setBytes(1, record.name().bytes());
@@ -87,9 +91,9 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public List<ResourceRecord> deleteAllByName(DomainName name) throws ResourceAccessException {
+	public List<ResourceRecord> deleteAllByName(DomainName name) throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? RETURNING type, time_to_live, data");
 		) {
 			statement.setBytes(1, name.bytes());
@@ -112,9 +116,9 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public List<ResourceRecord> deleteAllByNameAndType(DomainName name, short type) throws ResourceAccessException {
+	public List<ResourceRecord> deleteAllByNameAndType(DomainName name, short type) throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE name = ? AND type = ? RETURNING time_to_live, data");
 		) {
 			statement.setBytes(1, name.bytes());
@@ -138,9 +142,9 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public List<ResourceRecord> getAllByType(short type) throws ResourceAccessException {
+	public List<ResourceRecord> getAllByType(short type) throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				PreparedStatement statement = connection.prepareStatement("SELECT name, time_to_live, data FROM records WHERE type = ?");
 		) {
 			statement.setShort(1, type);
@@ -163,9 +167,9 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public List<ResourceRecord> deleteAllByType(short type) throws ResourceAccessException {
+	public List<ResourceRecord> deleteAllByType(short type) throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				PreparedStatement statement = connection.prepareStatement("DELETE FROM records WHERE type = ? RETURNING name, time_to_live, data");
 		) {
 			statement.setShort(1, type);
@@ -188,9 +192,9 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public List<ResourceRecord> getAll() throws ResourceAccessException {
+	public List<ResourceRecord> getAll() throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				Statement statement = connection.createStatement();
 				ResultSet resultSet = statement.executeQuery("SELECT * FROM records");
 		) {
@@ -211,9 +215,9 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public List<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException {
+	public List<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				PreparedStatement statement = connection.prepareStatement("SELECT type, time_to_live, data FROM records WHERE name = ?");
 		) {
 			statement.setBytes(1, name.bytes());
@@ -236,9 +240,9 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public List<ResourceRecord> getAllByNameAndType(DomainName name, short type) throws ResourceAccessException {
+	public List<ResourceRecord> getAllByNameAndType(DomainName name, short type) throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				PreparedStatement statement = connection.prepareStatement("SELECT time_to_live, data FROM records WHERE name = ? AND type = ?");
 		) {
 			statement.setBytes(1, name.bytes());
@@ -262,9 +266,9 @@ public class SQLResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public List<AliasChain> getAllChainsByNameAndType(DomainName name, short type) throws ResourceAccessException {
+	public List<AliasChain> getAllChainsByNameAndType(DomainName name, short type) throws ResourceAccessException, InterruptedException {
 		try (
-				Connection connection = dataSource.getConnection();
+				Connection connection = connectionPool.acquireConnection();
 				PreparedStatement statement = connection.prepareStatement("""
 						WITH RECURSIVE candidates AS ( SELECT data, time_to_live FROM records WHERE name = ? AND type = ? )
 						SELECT records.name as name, records.time_to_live as time_to_live, records.data as data, candidates.time_to_live as candidate_time_to_live FROM records 
@@ -301,4 +305,12 @@ public class SQLResourceRepository implements ResourceRepository {
 		}
 	}
 
+	@Override
+	public void close() throws ResourceAccessException {
+		try {
+			connectionPool.close();
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to close connection pool", e);
+		}
+	}
 }

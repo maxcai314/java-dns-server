@@ -17,7 +17,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
 
 public class DNSServer implements AutoCloseable {
@@ -99,13 +98,17 @@ public class DNSServer implements AutoCloseable {
 				var segment = MemorySegment.ofBuffer(buffer);
 
 				var request = DNSMessage.parseMessage(segment);
+				logger.info("Parsing took " + Duration.between(start, Instant.now()));
 
 				logger.info("Received UDP request from " + clientAddress);
 				logger.info("Header: " + request.header());
 				logger.info("Queries: " + request.queries());
 
 				var response = responseFor(request);
+
+				Instant start2 = Instant.now();
 				var responseSegment = response.toTruncatedMemorySegment(); // via UDP
+				logger.info("Serializing took " + Duration.between(start2, Instant.now()));
 
 				logger.info("Truncating: " + response.needsTruncation());
 				logger.info("Response: " + response);
@@ -143,7 +146,6 @@ public class DNSServer implements AutoCloseable {
 	private void handleSocketConnection(SocketChannel clientChannel) {
 		try (clientChannel) {
 			while (!Thread.interrupted()) {
-				Instant start = Instant.now();
 				ByteBuffer lengthBuffer = ByteBuffer.allocate(2);
 
 				while (lengthBuffer.hasRemaining())
@@ -158,16 +160,23 @@ public class DNSServer implements AutoCloseable {
 				while (buffer.hasRemaining())
 					clientChannel.read(buffer);
 				buffer.flip();
+
+				Instant start = Instant.now();
+
 				var segment = MemorySegment.ofBuffer(buffer);
 
 				var request = DNSMessage.parseMessage(segment);
+				logger.info("Parsing took " + Duration.between(start, Instant.now()));
 
 				logger.info("Received TCP request from " + clientChannel.getRemoteAddress());
 				logger.info("Header: " + request.header());
 				logger.info("Queries: " + request.queries());
 
 				var response = responseFor(request);
+
+				Instant start2 = Instant.now();
 				var responseSegment = response.toMemorySegment(); // via TCP
+				logger.info("Serializing took " + Duration.between(start2, Instant.now()));
 
 				logger.info("Response: " + response);
 				logger.info("Answers: " + response.answers());

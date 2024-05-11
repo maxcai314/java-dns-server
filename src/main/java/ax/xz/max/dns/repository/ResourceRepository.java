@@ -6,22 +6,25 @@ import ax.xz.max.dns.resource.ResourceRecord;
 
 import java.util.List;
 
-public interface ResourceRepository {
-	void clear() throws ResourceAccessException;
+public interface ResourceRepository extends AutoCloseable {
+	void clear() throws ResourceAccessException, InterruptedException;
 
-	void insert(ResourceRecord record) throws ResourceAccessException;
-	List<ResourceRecord> delete(ResourceRecord record) throws ResourceAccessException;
-	List<ResourceRecord> getAll() throws ResourceAccessException;
+	void insert(ResourceRecord record) throws ResourceAccessException, InterruptedException;
+	List<ResourceRecord> delete(ResourceRecord record) throws ResourceAccessException, InterruptedException;
+	List<ResourceRecord> getAll() throws ResourceAccessException, InterruptedException;
 
-	List<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException;
-	List<ResourceRecord> deleteAllByName(DomainName name) throws ResourceAccessException;
+	List<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException, InterruptedException;
+	List<ResourceRecord> deleteAllByName(DomainName name) throws ResourceAccessException, InterruptedException;
 
-	List<ResourceRecord> getAllByNameAndType(DomainName name, short type) throws ResourceAccessException;
-	List<ResourceRecord> deleteAllByNameAndType(DomainName name, short type) throws ResourceAccessException;
+	List<ResourceRecord> getAllByNameAndType(DomainName name, short type) throws ResourceAccessException, InterruptedException;
+	List<ResourceRecord> deleteAllByNameAndType(DomainName name, short type) throws ResourceAccessException, InterruptedException;
 
-	List<ResourceRecord> getAllByType(short type) throws ResourceAccessException;
-	List<ResourceRecord> deleteAllByType(short type) throws ResourceAccessException;
-	List<AliasChain> getAllChainsByNameAndType(DomainName name, short type) throws ResourceAccessException;
+	List<ResourceRecord> getAllByType(short type) throws ResourceAccessException, InterruptedException;
+	List<ResourceRecord> deleteAllByType(short type) throws ResourceAccessException, InterruptedException;
+	List<AliasChain> getAllChainsByNameAndType(DomainName name, short type) throws ResourceAccessException, InterruptedException;
+
+	@Override
+	void close() throws ResourceAccessException;
 
 	record AliasChain(CNameRecord aliasRecord, ResourceRecord record) {
 		public AliasChain {
