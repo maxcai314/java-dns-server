@@ -4,7 +4,6 @@ import ax.xz.max.dns.resource.DomainName;
 import ax.xz.max.dns.resource.ResourceRecord;
 
 import java.util.List;
-import java.util.Map;
 
 public class CachingResourceRepository implements ResourceRepository {
 	private final ResourceRepository delegate;
@@ -12,8 +11,8 @@ public class CachingResourceRepository implements ResourceRepository {
 
 	public CachingResourceRepository(ResourceRepository delegate, int cacheSize) {
 		this.delegate = delegate;
-		this.cache = new ConcurrentLimitedHashMap<>(cacheSize);
-		this.chainCache = new ConcurrentLimitedHashMap<>(cacheSize);
+		this.cache = new LimitedCache<>(cacheSize);
+		this.chainCache = new LimitedCache<>(cacheSize);
 	}
 
 	public CachingResourceRepository(ResourceRepository delegate) {
@@ -35,8 +34,8 @@ public class CachingResourceRepository implements ResourceRepository {
 
 	// cached
 	private record CacheKey(DomainName name, short type) {}
-	private final Map<CacheKey, List<ResourceRecord>> cache;
-	private final Map<CacheKey, List<AliasChain>> chainCache;
+	private final LimitedCache<CacheKey, List<ResourceRecord>> cache;
+	private final LimitedCache<CacheKey, List<AliasChain>> chainCache;
 	@Override
 	public List<ResourceRecord> getAllByNameAndType(DomainName name, short type) throws ResourceAccessException, InterruptedException {
 		throwIfClosed();

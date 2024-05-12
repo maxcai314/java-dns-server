@@ -49,21 +49,28 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<Resource
 	}
 
 	public int byteSize() {
-		return header.byteSize()
-				+ queries.stream().mapToInt(DNSQuery::byteSize).sum()
-				+ answers.stream().mapToInt(ResourceRecord::byteSize).sum()
-				+ authorities.stream().mapToInt(ResourceRecord::byteSize).sum()
-				+ additional.stream().mapToInt(ResourceRecord::byteSize).sum();
+		int total = header.byteSize();
+		for (var query : queries) total += query.byteSize();
+		for (var answer : answers) total += answer.byteSize();
+		for (var authority : authorities) total += authority.byteSize();
+		for (var additional : additional) total += additional.byteSize();
+
+		return total;
+	}
+
+	private boolean needsTruncation(int size) {
+		return size > 512;
 	}
 
 	public boolean needsTruncation() {
-		return byteSize() > 512;
+		return needsTruncation(byteSize());
 	}
 
 	public MemorySegment toTruncatedMemorySegment() {
-		var header = needsTruncation() ? this.header.asTruncated() : this.header;
-
 		MemorySegment segment = toMemorySegment();
+
+		// avoid re-calculating bytesize
+		var header = needsTruncation((int) segment.byteSize()) ? this.header.asTruncated() : this.header;
 
 		header.apply(segment); // apply the header again
 

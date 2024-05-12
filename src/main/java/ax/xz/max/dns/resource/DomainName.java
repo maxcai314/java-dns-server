@@ -3,6 +3,8 @@ package ax.xz.max.dns.resource;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.nio.ByteOrder.BIG_ENDIAN;
@@ -17,10 +19,12 @@ public record DomainName(String name) {
 		if (name.endsWith("-")) throw new IllegalArgumentException("Name cannot end with hyphen: " + name);
 		for (String label : name.split("\\.")) {
 			if (label.length() > 63) throw new IllegalArgumentException("Label too long: " + label);
-			if (!label.matches("[a-z0-9-]+")) throw new IllegalArgumentException("Invalid label: " + label);
+			if (!LABEL_TESTER.test(label)) throw new IllegalArgumentException("Invalid label: " + label);
 		}
 		if (name.length() > 255) throw new IllegalArgumentException("Name too long: " + name);
 	}
+
+	private static final Predicate<String> LABEL_TESTER = Pattern.compile("^[a-z0-9-]+$").asMatchPredicate();
 
 	private static final ValueLayout.OfByte NETWORK_BYTE = JAVA_BYTE.withByteAlignment(1).withOrder(BIG_ENDIAN);
 
