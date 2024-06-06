@@ -5,7 +5,6 @@ import ax.xz.max.dns.resource.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -15,38 +14,45 @@ import java.nio.channels.SocketChannel;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 public class DNSServer implements AutoCloseable {
 	private final Logger logger;
-	private final DatagramChannel datagramChannel;
-	private final ServerSocketChannel serverSocketChannel;
 	private final ExecutorService executor;
 	private final ResourceRepository repository;
 
-	public DNSServer(ResourceRepository repository) throws IOException {
+	public DNSServer(ResourceRepository repository) {
 		this(repository, Thread.ofVirtual().factory());
 	}
 
-	public DNSServer(ResourceRepository repository, ThreadFactory threadFactory) throws IOException {
+	public DNSServer(ResourceRepository repository, ThreadFactory threadFactory) {
 		this.repository = repository;
 		this.logger = LoggerFactory.getLogger(DNSServer.class);
-
-		this.datagramChannel = DatagramChannel.open().bind(new InetSocketAddress(53));
-		this.serverSocketChannel = ServerSocketChannel.open().bind(new InetSocketAddress(53));
 		this.executor = Executors.newThreadPerTaskExecutor(threadFactory);
 
-		executor.submit(this::runDatagramServer);
-		executor.submit(this::runSocketServer);
+		var address = new InetSocketAddress(53);
+
+		executor.submit(() -> runDatagramServer(address));
+		executor.submit(() -> runSocketServer(address));
+	}
+
+	public DNSServer(ResourceRepository repository, ThreadFactory threadFactory, Set<InetSocketAddress> addresses) {
+		this.repository = repository;
+		this.logger = LoggerFactory.getLogger(DNSServer.class);
+		this.executor = Executors.newThreadPerTaskExecutor(threadFactory);
+
+		for (var address : addresses) {
+			executor.submit(() -> runDatagramServer(address));
+			executor.submit(() -> runSocketServer(address));
+		}
 	}
 
 	@Override
-	public void close() throws IOException {
+	public void close() {
 		executor.shutdownNow();
-		datagramChannel.close();
-		serverSocketChannel.close();
 	}
 
 	private DNSMessage responseFor(DNSMessage request) {
@@ -86,59 +92,67 @@ public class DNSServer implements AutoCloseable {
 		return new DNSMessage(header, request.queries(), answers, authorities, additional);
 	}
 	
-	private void runDatagramServer() {
-		logger.info("UDP Server started");
-		ByteBuffer buffer = ByteBuffer.allocate(65535);
+	private void runDatagramServer(InetSocketAddress address) {
+		try (var datagramChannel = DatagramChannel.open().bind(address)) {
+			logger.info("UDP Server started");
+			ByteBuffer buffer = ByteBuffer.allocate(65535);
 
-		while (!Thread.interrupted()) {
-			try {
-				var clientAddress = datagramChannel.receive(buffer);
-				Instant start = Instant.now();
-				buffer.flip();
-				var segment = MemorySegment.ofBuffer(buffer);
+			while (!Thread.interrupted()) {
+				try {
+					var clientAddress = datagramChannel.receive(buffer);
+					Instant start = Instant.now();
+					buffer.flip();
+					var segment = MemorySegment.ofBuffer(buffer);
 
-				var request = DNSMessage.parseMessage(segment);
-//				logger.info("Parsing took " + Duration.between(start, Instant.now()));
+					var request = DNSMessage.parseMessage(segment);
+//					logger.info("Parsing took " + Duration.between(start, Instant.now()));
+//
+//					logger.info("Received UDP request from " + clientAddress);
+//					logger.info("Header: " + request.header());
+//					logger.info("Queries: " + request.queries());
 
-//				logger.info("Received UDP request from " + clientAddress);
-//				logger.info("Header: " + request.header());
-//				logger.info("Queries: " + request.queries());
+					var response = responseFor(request);
 
-				var response = responseFor(request);
+					Instant start2 = Instant.now();
+					var responseSegment = response.toTruncatedMemorySegment(); // via UDP
+//					logger.info("Serializing took " + Duration.between(start2, Instant.now()));
+//
+//					logger.info("Truncating: " + response.needsTruncation());
+//					logger.info("Response: " + response);
+//					logger.info("Answers: " + response.answers());
+//					logger.info("Authorities: " + response.authorities());
+//					logger.info("Additional: " + response.additional());
+//					logger.info("Sending response to " + clientAddress);
 
-				Instant start2 = Instant.now();
-				var responseSegment = response.toTruncatedMemorySegment(); // via UDP
-//				logger.info("Serializing took " + Duration.between(start2, Instant.now()));
-
-//				logger.info("Truncating: " + response.needsTruncation());
-//				logger.info("Response: " + response);
-//				logger.info("Answers: " + response.answers());
-//				logger.info("Authorities: " + response.authorities());
-//				logger.info("Additional: " + response.additional());
-//				logger.info("Sending response to " + clientAddress);
-
-				datagramChannel.send(responseSegment.asByteBuffer(), clientAddress);
-				logger.info("UDP Response took " + Duration.between(start, Instant.now()));
-			} catch (Exception e) {
-				logger.error("Error while processing request", e);
-			} finally {
-				buffer.clear();
+					datagramChannel.send(responseSegment.asByteBuffer(), clientAddress);
+					logger.info("UDP Response took " + Duration.between(start, Instant.now()));
+				} catch (Exception e) {
+					logger.error("Error while processing request", e);
+				} finally {
+					buffer.clear();
+				}
 			}
+		} catch (Exception e) {
+			logger.error("Error while running UDP server", e);
 		}
-		logger.info("Server stopped");
+		logger.info("UDP Server stopped");
 	}
 
-	private void runSocketServer() {
-		logger.info("TCP Server Socket Channel");
+	private void runSocketServer(InetSocketAddress address) {
+		try (var serverSocketChannel = ServerSocketChannel.open().bind(address)) {
+			logger.info("TCP Server Socket Channel started");
 
-		while (!Thread.interrupted()) {
-			try {
-				var clientChannel = serverSocketChannel.accept();
-//				logger.info("TCP connection accepted from " + clientChannel.getRemoteAddress());
-				executor.submit(() -> handleSocketConnection(clientChannel));
-			} catch (Exception e) {
-				logger.error("Error while accepting TCP connection", e);
+			while (!Thread.interrupted()) {
+				try {
+					var clientChannel = serverSocketChannel.accept();
+//					logger.info("TCP connection accepted from " + clientChannel.getRemoteAddress());
+					executor.submit(() -> handleSocketConnection(clientChannel));
+				} catch (Exception e) {
+					logger.error("Error while accepting TCP connection", e);
+				}
 			}
+		} catch (Exception e) {
+			logger.error("Error while running TCP server", e);
 		}
 		logger.info("TCP Server Socket Channel stopped");
 	}

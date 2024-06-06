@@ -8,6 +8,9 @@ import ax.xz.max.dns.server.DNSServer;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.Set;
 
 public class Server {
 	public static void main(String[] args) throws IOException, InterruptedException {
@@ -59,8 +62,13 @@ public class Server {
 
 			controller.flushCache();
 
-			try (var server = new DNSServer(controller)) {
-				System.in.read();
+			var localAddresses = Set.of(
+					new InetSocketAddress(InetAddress.ofLiteral("65.108.126.123"), 53),
+					new InetSocketAddress(InetAddress.ofLiteral("2a01:4f9:6b:15ce::2"), 53)
+			);
+
+			try (var server = new DNSServer(controller, Thread.ofVirtual().factory(), localAddresses)) {
+				Thread.sleep(Long.MAX_VALUE);
 			}
 		}
 	}
