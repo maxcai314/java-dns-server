@@ -13,7 +13,7 @@ import java.net.InetSocketAddress;
 import java.util.Set;
 
 public class Server {
-	public static void main(String[] args) throws IOException, InterruptedException {
+	public static void main(String[] args) throws InterruptedException {
 		try (CachingResourceRepository controller = CachingResourceRepository.of(new SQLResourceRepository())) {
 			controller.clear();
 
