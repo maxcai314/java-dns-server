@@ -24,7 +24,6 @@ public record DomainName(String name) {
 			}
 		}
 		if (name.length() > 255) throw new IllegalArgumentException("Name too long: " + name);
-		System.out.println(name);
 	}
 
 	private static final Predicate<String> LABEL_TESTER = Pattern.compile("^[a-z0-9-]+$").asMatchPredicate();
@@ -84,34 +83,32 @@ public record DomainName(String name) {
 	 */
 	private static ParsedDomainName fromData0(MemorySegment data, MemorySegment context, int depth) {
 		if (depth > 10) throw new IllegalArgumentException("Too many compression pointers- possible infinite loop");
+
 		StringBuilder builder = new StringBuilder();
 
 		int nextIndex = 0; // always points to the next byte to read
-		int remaining = Byte.toUnsignedInt(data.get(NETWORK_BYTE, nextIndex++));
-		while (true) {
-			if ((remaining & 0b1100_0000) != 0) {
+		int labelLength = Byte.toUnsignedInt(data.get(NETWORK_BYTE, nextIndex++));
+		while (labelLength != 0) {
+			if ((labelLength & 0b1100_0000) != 0) {
 				// compression pointer
-				int pointer = ((remaining & 0b0011_1111) << 8) | data.get(NETWORK_BYTE, nextIndex++);
+				int pointer = ((labelLength & 0b0011_1111) << 8) | data.get(NETWORK_BYTE, nextIndex++);
 				MemorySegment pointerData = context.asSlice(pointer);
 				DomainName pointerName = fromData0(pointerData, context, depth + 1).domainName();
 				builder.append(pointerName.name);
-				break;
-			}
-			if (remaining > 63)
-				throw new IllegalArgumentException("Label too long: " + remaining);
-
-			if (remaining == 0) {
-				byte nextByte = data.get(NETWORK_BYTE, nextIndex++);
-				if (nextByte == 0) break;
-				builder.append('.');
-				remaining = Byte.toUnsignedInt(nextByte);
+				return new ParsedDomainName(new DomainName(builder.toString()), nextIndex);
 			}
 
-			builder.append((char) data.get(NETWORK_BYTE, nextIndex++));
-			remaining--;
+			if (labelLength > 63)
+				throw new IllegalArgumentException("Label too long: " + labelLength);
 
-			if (nextIndex >= data.byteSize()) throw new IllegalArgumentException("Failed to parse data");
+			for (int i=0; i<labelLength; i++) {
+				builder.append((char) data.get(NETWORK_BYTE, nextIndex++));
+			}
+
+			labelLength = Byte.toUnsignedInt(data.get(NETWORK_BYTE, nextIndex++));
+			builder.append('.');
 		}
+
 		return new ParsedDomainName(new DomainName(builder.toString()), nextIndex);
 	}
 
