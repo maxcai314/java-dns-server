@@ -1,10 +1,13 @@
 package ax.xz.max.dns;
 
 import ax.xz.max.dns.repository.CachingResourceRepository;
+import ax.xz.max.dns.repository.FilteredResourceRepository;
 import ax.xz.max.dns.repository.SQLResourceRepository;
 import ax.xz.max.dns.resource.*;
 import ax.xz.max.dns.server.DNSServer;
+import org.sqlite.SQLiteDataSource;
 
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
@@ -14,7 +17,11 @@ import java.util.Set;
 
 public class Server {
 	public static void main(String[] args) throws InterruptedException {
-		try (CachingResourceRepository controller = CachingResourceRepository.of(new SQLResourceRepository())) {
+		try (
+				SQLResourceRepository repository = SQLResourceRepository.of("jdbc:sqlite:records.db");
+				CachingResourceRepository cachingRepository = CachingResourceRepository.of(repository);
+				FilteredResourceRepository controller = new FilteredResourceRepository(cachingRepository)
+		) {
 			controller.clear();
 
 			var com = new ARecord(
@@ -59,8 +66,6 @@ public class Server {
 			controller.insert(ns);
 			controller.insert(ns4);
 			controller.insert(ns6);
-
-			controller.flushCache();
 
 			var localAddresses = Set.of(
 					new InetSocketAddress(InetAddress.ofLiteral("65.108.126.123"), 53),

@@ -1,23 +1,30 @@
 package ax.xz.max.dns.repository;
 
-import ax.xz.max.dns.repository.connection.ConnectionFactory;
 import ax.xz.max.dns.repository.connection.ConnectionPool;
 import ax.xz.max.dns.resource.*;
 import org.sqlite.SQLiteDataSource;
 
+import javax.sql.DataSource;
 import java.lang.foreign.MemorySegment;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SQLResourceRepository implements ResourceRepository {
-	private final SQLiteDataSource dataSource;
 	private final ConnectionPool connectionPool;
-	public SQLResourceRepository() throws ResourceAccessException, InterruptedException {
-		dataSource = new SQLiteDataSource();
-		dataSource.setUrl("jdbc:sqlite:records.db");
-		connectionPool = new ConnectionPool(ConnectionFactory.of(dataSource), 20, 30);
-		initialize();
+	public SQLResourceRepository(DataSource dataSource) throws ResourceAccessException, InterruptedException {
+		connectionPool = new ConnectionPool(dataSource, 20, 30);
+		try {
+			initialize();
+		} catch (Exception e) {
+			close();
+		}
+	}
+
+	public static SQLResourceRepository of(String url) throws ResourceAccessException, InterruptedException {
+		SQLiteDataSource dataSource = new SQLiteDataSource();
+		dataSource.setUrl(url);
+		return new SQLResourceRepository(dataSource);
 	}
 
 	private void initialize() throws ResourceAccessException, InterruptedException {
@@ -216,6 +223,31 @@ public class SQLResourceRepository implements ResourceRepository {
 			return records;
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to get all records", e);
+		}
+	}
+
+	@Override
+	public List<DomainName> getAllDomainNames() throws ResourceAccessException, InterruptedException {
+		try (
+				Connection connection = connectionPool.acquireConnection();
+				PreparedStatement statement = connection.prepareStatement("""
+						SELECT name FROM records
+						UNION
+						SELECT data FROM records WHERE type = ?;""");
+		) {
+			statement.setShort(1, CNameRecord.ID);
+			try (ResultSet resultSet = statement.executeQuery()) {
+				List<DomainName> records = new ArrayList<>();
+
+				while (resultSet.next())
+					records.add(
+							DomainName.fromData(MemorySegment.ofArray(resultSet.getBytes("name"))).domainName()
+					);
+
+				return records;
+			}
+		} catch (SQLException e) {
+			throw new ResourceAccessException("Failed to get all domain names", e);
 		}
 	}
 

@@ -165,7 +165,7 @@ public class DNSServer implements AutoCloseable {
 				while (lengthBuffer.hasRemaining())
 					clientChannel.read(lengthBuffer); // read 2 bytes for message length
 				lengthBuffer.flip();
-				int length = lengthBuffer.getShort();
+				int length = Short.toUnsignedInt(lengthBuffer.getShort());
 
 //				logger.info("TCP Message length: " + length + " bytes");
 

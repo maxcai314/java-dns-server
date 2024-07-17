@@ -1,5 +1,6 @@
 package ax.xz.max.dns.repository.connection;
 
+import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -13,11 +14,11 @@ public class ConnectionPool {
 	private final int corePoolSize;
 	private final int maxPoolSize;
 	private volatile boolean isClosed = false;
-	private final ConnectionFactory connectionFactory;
+	private final DataSource dataSource;
 
-	public ConnectionPool(ConnectionFactory connectionFactory, int corePoolSize, int maxPoolSize) {
+	public ConnectionPool(DataSource dataSource, int corePoolSize, int maxPoolSize) {
 		availableConnections = new ArrayBlockingQueue<>(maxPoolSize);
-		this.connectionFactory = connectionFactory;
+		this.dataSource = dataSource;
 		this.poolSize = 0;
 		this.corePoolSize = corePoolSize;
 		this.maxPoolSize = maxPoolSize;
@@ -25,7 +26,7 @@ public class ConnectionPool {
 
 	private synchronized void addConnectionIfNeeded() throws SQLException {
 		if (availableConnections.isEmpty() && poolSize < maxPoolSize) {
-			availableConnections.add(connectionFactory.newConnection());
+			availableConnections.add(dataSource.getConnection());
 			poolSize++;
 		}
 	}

@@ -10,7 +10,7 @@ import java.net.Inet4Address;
 
 public class Database {
 	public static void main(String[] args) throws InterruptedException {
-		try (SQLResourceRepository controller = new SQLResourceRepository()) {
+		try (SQLResourceRepository controller = SQLResourceRepository.of("jdbc:sqlite:records.db");) {
 			controller.clear();
 
 			var com = new ARecord(new DomainName("example.com"), 10, Inet4Address.ofLiteral("127.0.0.1"));

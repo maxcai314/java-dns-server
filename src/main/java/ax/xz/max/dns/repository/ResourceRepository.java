@@ -12,6 +12,7 @@ public interface ResourceRepository extends AutoCloseable {
 	void insert(ResourceRecord record) throws ResourceAccessException, InterruptedException;
 	List<ResourceRecord> delete(ResourceRecord record) throws ResourceAccessException, InterruptedException;
 	List<ResourceRecord> getAll() throws ResourceAccessException, InterruptedException;
+	List<DomainName> getAllDomainNames() throws ResourceAccessException, InterruptedException;
 
 	List<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException, InterruptedException;
 	List<ResourceRecord> deleteAllByName(DomainName name) throws ResourceAccessException, InterruptedException;

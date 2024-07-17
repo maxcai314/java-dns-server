@@ -28,6 +28,7 @@ public class CachingResourceRepository implements ResourceRepository {
 	}
 
 	public void flushCache() {
+		throwIfClosed();
 		cache.clear();
 		chainCache.clear();
 	}
@@ -98,6 +99,12 @@ public class CachingResourceRepository implements ResourceRepository {
 	}
 
 	@Override
+	public List<DomainName> getAllDomainNames() throws ResourceAccessException, InterruptedException {
+		throwIfClosed();
+		return delegate.getAllDomainNames();
+	}
+
+	@Override
 	public List<ResourceRecord> getAllByName(DomainName name) throws ResourceAccessException, InterruptedException {
 		throwIfClosed();
 		return delegate.getAllByName(name);
@@ -142,6 +149,5 @@ public class CachingResourceRepository implements ResourceRepository {
 	@Override
 	public void close() throws ResourceAccessException {
 		isClosed = true;
-		delegate.close();
 	}
 }

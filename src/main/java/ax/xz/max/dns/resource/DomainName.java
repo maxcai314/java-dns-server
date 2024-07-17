@@ -13,15 +13,18 @@ public record DomainName(String name) {
 	public DomainName {
 		name = name.toLowerCase();
 		if (name.equals("@")) name = "";
-		if (!name.endsWith(".")) name += ".";
 		if (name.startsWith(".")) name = name.substring(1);
+		if (!name.endsWith(".")) name += ".";
 		if (name.startsWith("-")) throw new IllegalArgumentException("Name cannot start with hyphen: " + name);
 		if (name.endsWith("-")) throw new IllegalArgumentException("Name cannot end with hyphen: " + name);
-		for (String label : name.split("\\.")) {
-			if (label.length() > 63) throw new IllegalArgumentException("Label too long: " + label);
-			if (!LABEL_TESTER.test(label)) throw new IllegalArgumentException("Invalid label: " + label);
+		if (!name.equals(".")) {
+			for (String label : name.split("\\.")) {
+				if (label.length() > 63) throw new IllegalArgumentException("Label too long: " + label);
+				if (!LABEL_TESTER.test(label)) throw new IllegalArgumentException("Invalid label: " + label);
+			}
 		}
 		if (name.length() > 255) throw new IllegalArgumentException("Name too long: " + name);
+		System.out.println(name);
 	}
 
 	private static final Predicate<String> LABEL_TESTER = Pattern.compile("^[a-z0-9-]+$").asMatchPredicate();
@@ -33,6 +36,8 @@ public record DomainName(String name) {
 	}
 
 	public int byteSize() {
+		if (name.equals("."))
+			return 1;
 		return name.length() + 1; // null-terminated; +2 if name doesn't end with .
 	}
 
@@ -95,14 +100,15 @@ public record DomainName(String name) {
 			if (remaining > 63)
 				throw new IllegalArgumentException("Label too long: " + remaining);
 
-			builder.append((char) data.get(NETWORK_BYTE, nextIndex++));
-			remaining--;
 			if (remaining == 0) {
 				byte nextByte = data.get(NETWORK_BYTE, nextIndex++);
 				if (nextByte == 0) break;
 				builder.append('.');
 				remaining = Byte.toUnsignedInt(nextByte);
 			}
+
+			builder.append((char) data.get(NETWORK_BYTE, nextIndex++));
+			remaining--;
 
 			if (nextIndex >= data.byteSize()) throw new IllegalArgumentException("Failed to parse data");
 		}
@@ -115,4 +121,6 @@ public record DomainName(String name) {
 		apply(segment);
 		return bytes;
 	}
+
+	public static final DomainName ROOT = new DomainName(".");
 }
