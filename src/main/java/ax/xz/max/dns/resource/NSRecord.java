@@ -6,10 +6,8 @@ public record NSRecord(DomainName name, int timeToLive, DomainName nameserver) i
 	public static final short ID = 2;
 
 	@Override
-	public MemorySegment recordData() {
-		var segment = MemorySegment.ofArray(new byte[nameserver.byteSize()]);
-		nameserver.apply(segment);
-		return segment;
+	public void applyData(MemorySegment slice) {
+		nameserver.apply(slice);
 	}
 
 	@Override

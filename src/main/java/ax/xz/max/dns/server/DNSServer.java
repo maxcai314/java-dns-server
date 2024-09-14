@@ -5,6 +5,7 @@ import ax.xz.max.dns.resource.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -95,7 +96,7 @@ public class DNSServer implements AutoCloseable {
 	private void runDatagramServer(InetSocketAddress address) {
 		try (var datagramChannel = DatagramChannel.open().bind(address)) {
 			logger.info("UDP Server started");
-			ByteBuffer buffer = ByteBuffer.allocate(65535);
+			ByteBuffer buffer = ByteBuffer.allocateDirect(65535);
 
 			while (!Thread.interrupted()) {
 				try {
@@ -114,17 +115,21 @@ public class DNSServer implements AutoCloseable {
 					var response = responseFor(request);
 
 					Instant start2 = Instant.now();
-					var responseSegment = response.toTruncatedMemorySegment(); // via UDP
-//					logger.info("Serializing took " + Duration.between(start2, Instant.now()));
-//
-//					logger.info("Truncating: " + response.needsTruncation());
-//					logger.info("Response: " + response);
-//					logger.info("Answers: " + response.answers());
-//					logger.info("Authorities: " + response.authorities());
-//					logger.info("Additional: " + response.additional());
-//					logger.info("Sending response to " + clientAddress);
 
-					datagramChannel.send(responseSegment.asByteBuffer(), clientAddress);
+					try (Arena arena = Arena.ofConfined()) {
+						var responseSegment = response.toTruncatedMemorySegment(arena); // via UDP
+//						logger.info("Serializing took " + Duration.between(start2, Instant.now()));
+//
+//						logger.info("Truncating: " + response.needsTruncation());
+//						logger.info("Response: " + response);
+//						logger.info("Answers: " + response.answers());
+//						logger.info("Authorities: " + response.authorities());
+//						logger.info("Additional: " + response.additional());
+//						logger.info("Sending response to " + clientAddress);
+
+						datagramChannel.send(responseSegment.asByteBuffer(), clientAddress);
+					}
+
 					logger.info("UDP Response took " + Duration.between(start, Instant.now()));
 				} catch (Exception e) {
 					logger.error("Error while processing request", e);
@@ -160,7 +165,7 @@ public class DNSServer implements AutoCloseable {
 	private void handleSocketConnection(SocketChannel clientChannel) {
 		try (clientChannel) {
 			while (!Thread.interrupted()) {
-				ByteBuffer lengthBuffer = ByteBuffer.allocate(2);
+				ByteBuffer lengthBuffer = ByteBuffer.allocateDirect(2);
 
 				while (lengthBuffer.hasRemaining())
 					clientChannel.read(lengthBuffer); // read 2 bytes for message length
@@ -189,22 +194,23 @@ public class DNSServer implements AutoCloseable {
 				var response = responseFor(request);
 
 				Instant start2 = Instant.now();
-				var responseSegment = response.toMemorySegment(); // via TCP
-				lengthBuffer.clear();
-				lengthBuffer.putShort((short) responseSegment.byteSize());
-				lengthBuffer.flip();
 
-//				logger.info("Serializing took " + Duration.between(start2, Instant.now()));
+				try (Arena arena = Arena.ofConfined()) {
+					var responseSegment = response.toTruncatedMemorySegment(arena); // via TCP
+//					logger.info("Serializing took " + Duration.between(start2, Instant.now()));
 //
-//				logger.info("Response: " + response);
-//				logger.info("Answers: " + response.answers());
-//				logger.info("Authorities: " + response.authorities());
-//				logger.info("Additional: " + response.additional());
-//				logger.info("Sending response to " + clientChannel.getRemoteAddress());
+//					logger.info("Truncating: " + response.needsTruncation());
+//					logger.info("Response: " + response);
+//					logger.info("Answers: " + response.answers());
+//					logger.info("Authorities: " + response.authorities());
+//					logger.info("Additional: " + response.additional());
+//					logger.info("Sending response to " + clientChannel.getRemoteAddress());
 
-				clientChannel.write(lengthBuffer);
-				clientChannel.write(responseSegment.asByteBuffer());
-//				logger.info("TCP Response took " + Duration.between(start, Instant.now()));
+					clientChannel.write(lengthBuffer);
+					clientChannel.write(responseSegment.asByteBuffer());
+				}
+
+				logger.info("TCP Response took " + Duration.between(start, Instant.now()));
 //
 //				logger.info("Closing TCP channel with " + clientChannel.getRemoteAddress());
 //				break;

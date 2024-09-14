@@ -6,10 +6,8 @@ public record CNameRecord(DomainName name, int timeToLive, DomainName alias) imp
 	public static final short ID = 5;
 
 	@Override
-	public MemorySegment recordData() {
-		var segment = MemorySegment.ofArray(new byte[alias.byteSize()]);
-		alias.apply(segment);
-		return segment;
+	public void applyData(MemorySegment slice) {
+		alias.apply(slice);
 	}
 
 	@Override

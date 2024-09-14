@@ -11,6 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SQLResourceRepository implements ResourceRepository {
+	private static byte[] data(ResourceRecord record) {
+		byte[] result = new byte[record.dataLength()];
+		record.applyData(MemorySegment.ofArray(result));
+		return result;
+	}
+
 	private final ConnectionPool connectionPool;
 	public SQLResourceRepository(DataSource dataSource) throws ResourceAccessException, InterruptedException {
 		connectionPool = new ConnectionPool(dataSource, 20, 30);
@@ -62,7 +68,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setBytes(1, record.name().bytes());
 			statement.setShort(2, record.type());
 			statement.setInt(3, record.timeToLive());
-			statement.setBytes(4, record.recordData().asByteBuffer().array());
+			statement.setBytes(4, data(record));
 			statement.executeUpdate();
 		} catch (SQLException e) {
 			throw new ResourceAccessException("Failed to insert record", e);
@@ -78,7 +84,7 @@ public class SQLResourceRepository implements ResourceRepository {
 			statement.setBytes(1, record.name().bytes());
 			statement.setShort(2, record.type());
 			statement.setInt(3, record.timeToLive());
-			statement.setBytes(4, record.recordData().asByteBuffer().array());
+			statement.setBytes(4, data(record));
 
 			try (ResultSet resultSet = statement.executeQuery()) {
 				List<ResourceRecord> records = new ArrayList<>();

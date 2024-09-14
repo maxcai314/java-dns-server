@@ -45,16 +45,13 @@ public record OPTRecord(int payloadSize, byte resultCode, byte version, boolean 
 	}
 
 	@Override
-	public MemorySegment recordData() {
-		var segment = MemorySegment.ofArray(new byte[dataLength()]);
+	public void applyData(MemorySegment slice) {
 		int offset = 0;
 
 		for (Option option : options) {
-			option.apply(segment.asSlice(offset, option.byteSize()));
+			option.apply(slice.asSlice(offset, option.byteSize()));
 			offset += option.byteSize();
 		}
-
-		return segment;
 	}
 
 	@Override

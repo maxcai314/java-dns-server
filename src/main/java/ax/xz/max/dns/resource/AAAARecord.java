@@ -12,8 +12,8 @@ public record AAAARecord(DomainName name, int timeToLive, Inet6Address address) 
 	public static final short ID = 28;
 
 	@Override
-	public MemorySegment recordData() {
-		return MemorySegment.ofArray(address.getAddress());
+	public void applyData(MemorySegment slice) {
+		slice.copyFrom(MemorySegment.ofArray(address.getAddress()));
 	}
 
 	@Override

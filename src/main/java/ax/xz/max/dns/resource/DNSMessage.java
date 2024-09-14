@@ -1,6 +1,7 @@
 package ax.xz.max.dns.resource;
 
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,8 +67,8 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<Resource
 		return needsTruncation(byteSize());
 	}
 
-	public MemorySegment toTruncatedMemorySegment() {
-		MemorySegment segment = toMemorySegment();
+	public MemorySegment toTruncatedMemorySegment(SegmentAllocator allocator) {
+		MemorySegment segment = toMemorySegment(allocator);
 
 		// avoid re-calculating bytesize
 		var header = needsTruncation((int) segment.byteSize()) ? this.header.asTruncated() : this.header;
@@ -78,8 +79,8 @@ public record DNSMessage(DNSHeader header, List<DNSQuery> queries, List<Resource
 		else return segment;
 	}
 
-	public MemorySegment toMemorySegment() {
-		MemorySegment segment = MemorySegment.ofArray(new byte[byteSize()]);
+	public MemorySegment toMemorySegment(SegmentAllocator allocator) {
+		MemorySegment segment = allocator.allocate(byteSize());
 		header.apply(segment);
 		int offset = header.byteSize();
 

@@ -11,7 +11,7 @@ public sealed interface ResourceRecord permits ARecord, AAAARecord, CNameRecord,
 
 	int timeToLive();
 
-	MemorySegment recordData();
+	void applyData(MemorySegment slice);
 
 	int dataLength();
 
@@ -65,9 +65,9 @@ public sealed interface ResourceRecord permits ARecord, AAAARecord, CNameRecord,
 		trailerSlice.set(NETWORK_SHORT, 0, type()); // type
 		trailerSlice.set(NETWORK_SHORT, 2, classID()); // class
 		trailerSlice.set(NETWORK_INT,   4, timeToLive()); // ttl
-		trailerSlice.set(NETWORK_SHORT, 8, (short) recordData().byteSize()); // rdlength
+		trailerSlice.set(NETWORK_SHORT, 8, (short) dataLength()); // rdlength
 
-		rdataSlice.copyFrom(recordData());
+		applyData(rdataSlice);
 	}
 
 	record ParsedResourceRecord(ResourceRecord record, int bytesParsed) {}
