@@ -174,7 +174,7 @@ public class DNSServer implements AutoCloseable {
 
 //				logger.info("TCP Message length: " + length + " bytes");
 
-				ByteBuffer buffer = ByteBuffer.allocate(length);
+				ByteBuffer buffer = ByteBuffer.allocateDirect(length);
 
 				while (buffer.hasRemaining())
 					clientChannel.read(buffer);
@@ -197,6 +197,11 @@ public class DNSServer implements AutoCloseable {
 
 				try (Arena arena = Arena.ofConfined()) {
 					var responseSegment = response.toTruncatedMemorySegment(arena); // via TCP
+
+					lengthBuffer.clear();
+					lengthBuffer.putShort((short) responseSegment.byteSize());
+					lengthBuffer.flip();
+
 //					logger.info("Serializing took " + Duration.between(start2, Instant.now()));
 //
 //					logger.info("Truncating: " + response.needsTruncation());
@@ -206,8 +211,7 @@ public class DNSServer implements AutoCloseable {
 //					logger.info("Additional: " + response.additional());
 //					logger.info("Sending response to " + clientChannel.getRemoteAddress());
 
-					clientChannel.write(lengthBuffer);
-					clientChannel.write(responseSegment.asByteBuffer());
+					clientChannel.write(new ByteBuffer[] {lengthBuffer, responseSegment.asByteBuffer()});
 				}
 
 				logger.info("TCP Response took " + Duration.between(start, Instant.now()));
